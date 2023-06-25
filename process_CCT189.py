@@ -3,6 +3,7 @@ from pathlib import Path
 import urllib
 import zipfile
 import tensorflow as tf
+import SimpleITK as sitk
 
 data_dir = Path('data')
 if not data_dir.exists():
@@ -47,12 +48,12 @@ datasets = [
             # 'model': simple_cnn_denoiser,
             # 'name': 'CCT189 simple CNN'
             # }, 
-            # {
-            # 'intput_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-            # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_vgg',
-            # 'model': model_vggloss,
-            # 'name': 'CCT189 simple CNN VGG Loss'
-            # },
+            {
+            'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
+            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_vgg',
+            'model': model_vggloss,
+            'name': 'CCT189 simple CNN VGG Loss'
+            },
             {
             'input_dir': data_dir / 'CCT189_peds',
             'output_dir': data_dir / 'CCT189_peds_denoised_mse',

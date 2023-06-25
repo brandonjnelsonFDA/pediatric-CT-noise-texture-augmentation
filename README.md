@@ -8,3 +8,6 @@ Start by
 5. save that tutorial as a new "advanced tutorial" for the LCD toolkit
 6. next get a baseline performance of these models with PED-ETK
 7. start developing data aug and compare reevaluate comparing against previous baselines
+
+![Alt text](LCD_results.png)
+These are the preliminary results for the standard LCD CT (step 4)
