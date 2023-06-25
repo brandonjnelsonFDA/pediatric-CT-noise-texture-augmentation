@@ -42,12 +42,12 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
 
 model = simple_cnn_denoiser
 datasets = [ 
-            # {
-            # 'intput_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-            # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
-            # 'model': simple_cnn_denoiser,
-            # 'name': 'CCT189 simple CNN'
-            # }, 
+            {
+            'intput_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
+            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
+            'model': simple_cnn_denoiser,
+            'name': 'CCT189 simple CNN'
+            }, 
             {
             'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
             'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_vgg',
