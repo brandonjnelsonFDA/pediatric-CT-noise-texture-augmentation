@@ -19,7 +19,7 @@ if not data_dir.exists():
 simple_cnn_denoiser = tf.keras.models.load_model('models/simple_cnn_denoiser')
 simple_cnn_denoiser.summary()
 # %%
-model_vggloss = tf.keras.models.load_model('models/model_vggloss')
+model_vggloss = tf.keras.models.load_model('models/model_vggloss', compile=False) #compile = False means don't need to load custom loss function
 model_vggloss.summary()
 # %%
 import matplotlib.pyplot as plt
@@ -32,19 +32,23 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
         if series.stem == 'ground_truth':
             continue
         input_image = sitk.ReadImage(series)
-        x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
-        input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, x, y, 1).astype('float32') - offset
-        sp_denoised = model.predict(input_array, batch_size=batch_size)
         output = Path(str(series).replace(str(input_dir), str(output_dir)))
         output.parent.mkdir(parents=True, exist_ok=True)
-        sitk.WriteImage(sitk.GetImageFromArray(sp_denoised), output)
-        print(f'{name} --> {output}')
+        if output.exists():
+            print(f'{output} already found, skipping {name}')
+        else:
+            x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
+            input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, x, y, 1).astype('float32') - offset
+            sp_denoised = model.predict(input_array, batch_size=batch_size)
+
+            sitk.WriteImage(sitk.GetImageFromArray(sp_denoised), output)
+            print(f'{name} --> {output}')
 
 model = simple_cnn_denoiser
 datasets = [ 
             {
-            'intput_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
+            'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
+            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised',
             'model': simple_cnn_denoiser,
             'name': 'CCT189 simple CNN'
             }, 
