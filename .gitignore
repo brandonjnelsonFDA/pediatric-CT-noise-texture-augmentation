@@ -2,4 +2,5 @@ data
 models
 Ped-ETK
 LCD_CT*
+.venv
 *.csv
