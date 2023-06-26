@@ -5,11 +5,11 @@ import zipfile
 import tensorflow as tf
 import SimpleITK as sitk
 
-data_dir = Path('data')
+data_dir = Path('data/CCT189')
 if not data_dir.exists():
     data_dir.mkdir(parents=True)
     url = 'https://zenodo.org/record/7996580/files/large_dataset.zip?download=1'
-    fname = data_dir / 'CCT189.zip'
+    fname = str(data_dir / 'CCT189.zip')
     urllib.request.urlretrieve(url, fname)
 
     with zipfile.ZipFile(fname,"r") as zip_ref:
@@ -19,7 +19,7 @@ if not data_dir.exists():
 simple_cnn_denoiser = tf.keras.models.load_model('models/simple_cnn_denoiser')
 simple_cnn_denoiser.summary()
 # %%
-model_vggloss = tf.keras.models.load_model('models/model_vggloss')
+model_vggloss = tf.keras.models.load_model('models/model_vggloss', compile=False)
 model_vggloss.summary()
 # %%
 import matplotlib.pyplot as plt
@@ -43,7 +43,7 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
 model = simple_cnn_denoiser
 datasets = [ 
             {
-            'intput_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
+            'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
             'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
             'model': simple_cnn_denoiser,
             'name': 'CCT189 simple CNN'
