@@ -26,13 +26,16 @@ base_directory = 'data/CCT189/large_dataset';
 series_1.name = 'fbp';
 series_1.dir = fullfile(base_directory, series_1.name);
 
-series_2.name = 'Simple CNN'
+series_2.name = 'Simple CNN MSE'
 series_2.dir  = fullfile(base_directory, 'fbp_denoised');
 
-series_3.name = 'REDCNN'
-series_3.dir = fullfile(base_directory, 'DL_denoised');
+series_3.name = 'Simple CNN VGG'
+series_3.dir  = fullfile(base_directory, 'fbp_denoised_vgg');
 
-series_list = [series_1, series_2, series_3];
+series_4.name = 'REDCNN'
+series_4.dir = fullfile(base_directory, 'DL_denoised');
+
+series_list = [series_1, series_2, series_3, series_4];
 %% Next specify a ground truth image
 % This is used to determine the center of each lesion for Location Known Exactly (LKE) low contrast detection
 
@@ -64,6 +67,9 @@ for i = 1:length(series_list)
   else
     res_table = cat(1, res_table, series.res);
   end
+end
+if is_octave
+  res_table.recon = strvcat(res_table.recon);
 end
 %% save results
 fname = mfilename;
