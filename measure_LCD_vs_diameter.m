@@ -2,14 +2,6 @@ function res_table = measure_LCD_vs_diameter(base_data_folder, observers, ground
   diameter_dirs = dir(fullfile(base_data_folder, 'diameter*mm'));
   n_diameters = length(diameter_dirs);
 
-  ground_truth_filename = fullfile(base_data_folder, 'ground_truth.mhd');
-  offset = 1000;
-  fname = fullfile(base_data_folder, 'diameter292mm', 'fbp');
-  if ~exist(ground_truth_filename, 'file')
-      ground_truth = approximate_groundtruth(fname, ground_truth_filename, offset);
-  end
-  ground_truth = mhd_read_image(ground_truth_filename) - offset;
-
   for diam_idx=1:n_diameters
       diameter_dir=diameter_dirs(diam_idx).name;
       diameter = regexp(diameter_dir, '\d+', 'match'); diameter = str2num(diameter{:});
