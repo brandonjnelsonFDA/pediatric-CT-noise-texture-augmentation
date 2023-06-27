@@ -5,7 +5,7 @@ import zipfile
 import tensorflow as tf
 import SimpleITK as sitk
 
-data_dir = Path('data/CCT189')
+data_dir = Path('data')
 if not data_dir.exists():
     data_dir.mkdir(parents=True)
     url = 'https://zenodo.org/record/7996580/files/large_dataset.zip?download=1'
@@ -33,10 +33,10 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
             continue
         input_image = sitk.ReadImage(series)
         output = Path(str(series).replace(str(input_dir), str(output_dir)))
-        output.parent.mkdir(parents=True, exist_ok=True)
         if output.exists():
             print(f'{output} already found, skipping {name}')
         else:
+            output.parent.mkdir(parents=True, exist_ok=True)
             x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
             input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, x, y, 1).astype('float32') - offset
             sp_denoised = model.predict(input_array, batch_size=batch_size)

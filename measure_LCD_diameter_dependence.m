@@ -16,7 +16,8 @@ n_diameters = length(diameter_dirs);
 
 ground_truth_filename = fullfile(base_data_folder, 'diameter112mm', 'fbp');
 offset = 1000;
-ground_truth = approximate_groundtruth(fullfile(base_data_folder, 'diameter112mm', 'fbp'), ground_truth_filename, offset)
+image_dir = fullfile(base_data_folder, 'diameter112mm', 'fbp');
+ground_truth = approximate_groundtruth(image_dir, ground_truth_filename, offset)
 ground_truth = mhd_read_image(ground_truth_filename) - offset;
 
 for diam_idx=1:n_diameters
