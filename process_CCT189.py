@@ -5,7 +5,7 @@ import zipfile
 import tensorflow as tf
 import SimpleITK as sitk
 
-data_dir = Path('data/CCT189')
+data_dir = Path('data')
 if not data_dir.exists():
     data_dir.mkdir(parents=True)
     url = 'https://zenodo.org/record/7996580/files/large_dataset.zip?download=1'
@@ -48,7 +48,7 @@ model = simple_cnn_denoiser
 datasets = [ 
             {
             'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised',
+            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
             'model': simple_cnn_denoiser,
             'name': 'CCT189 simple CNN'
             }, 
