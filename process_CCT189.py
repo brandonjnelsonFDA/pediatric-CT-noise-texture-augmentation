@@ -48,7 +48,7 @@ model = simple_cnn_denoiser
 datasets = [ 
             {
             'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised',
+            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
             'model': simple_cnn_denoiser,
             'name': 'CCT189 simple CNN'
             }, 
