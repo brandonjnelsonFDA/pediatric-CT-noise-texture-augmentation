@@ -1,4 +1,8 @@
-base_data_folder = 'data\CCT189_peds'
+base_data_folder = 'data\CCT189_peds';
+if ~exist(base_data_folder)
+  unzip('https://sandbox.zenodo.org/record/1213653/files/CCT189.zip?download=1', fullfile('data', 'CCT189_peds'))
+end
+
 addpath(genpath('LCD_CT2'));
 observers = {LG_CHO_2D()};
 % observers = {DOG_CHO_2D()}
@@ -22,7 +26,7 @@ for diam_idx=1:n_diameters
     n_recons = length(recons);
     for recon_idx=3:n_recons
       recon = recons(recon_idx).name;
-      res = measure_LCD(fullfile(diameter_dir, recon), observers, ground_truth, offset, nreader, pct_split, seed_split);
+      res = measure_LCD(fullfile(diameter_dir, recon), observers, ground_truth, offset);
       if is_octave
        res.recon = recon;
        res.diameter = diameter;
