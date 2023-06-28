@@ -17,8 +17,10 @@ series_1.name = 'fbp';
 series_1.dir = fullfile(base_directory, 'CCT189_peds');
 
 series_2.name = 'Simple CNN MSE'
-series_2.dir  = fullfile(base_directory, 'CCT189_peds_denoised');
+series_2.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse');
 
+series_3.name = 'Simple CNN VGG'
+series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_vgg');
 
 series_list = [series_1, series_2];
 
@@ -30,7 +32,7 @@ if ~exist(ground_truth_filename, 'file')
 end
 ground_truth = mhd_read_image(ground_truth_filename) - offset;
 
-for i = 1:length(series_list)
+for i = 2:length(series_list)
   series = series_list(i);
   res = measure_LCD_vs_diameter(series.dir, observers, ground_truth, offset);
   if i==1

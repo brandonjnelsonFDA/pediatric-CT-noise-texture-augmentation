@@ -28,5 +28,6 @@ function res_table = measure_LCD_vs_diameter(base_data_folder, observers, ground
         end
       end
   end
+  
 end
 

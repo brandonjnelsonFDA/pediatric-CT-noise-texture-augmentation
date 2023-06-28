@@ -27,7 +27,7 @@ series_1.name = 'fbp';
 series_1.dir = fullfile(base_directory, series_1.name);
 
 series_2.name = 'Simple CNN MSE'
-series_2.dir  = fullfile(base_directory, 'fbp_denoised');
+series_2.dir  = fullfile(base_directory, 'fbp_denoised_mse');
 
 series_3.name = 'Simple CNN VGG'
 series_3.dir  = fullfile(base_directory, 'fbp_denoised_vgg');
@@ -85,6 +85,6 @@ for i = 1:length(plot_objs)
   set(plot_objs(i).legend, 'location', 'southeast')
 end
 savefig('denoiser_LCD_comparison');
-##print(fig, 'denoiser_LCD_comparison.png', '-r300', '-dpng');
+print(fig, 'denoiser_LCD_comparison.png', '-r300', '-dpng');
 res_table
 
