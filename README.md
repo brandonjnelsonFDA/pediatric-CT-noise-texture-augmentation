@@ -11,3 +11,6 @@ Start by
 
 ![Alt text](LCD_results.png)
 These are the preliminary results for the standard LCD CT (step 4)
+
+TODO Fix: headers of mhd files in peds dataset to remove spaces "    "
+TODO change process_CCT189.py to give folder names to the recon type rather than fbp

@@ -3,7 +3,7 @@
 %
 % This demo outputs AUC curves of two recon options to show how the LCD-CT tool can be used to compare to denoising devices or recon methods
 %% add relevant source files and packages
-addpath(genpath('LCD_CT2/src'))
+addpath(genpath('LCD_CT/src'))
 % clear all;
 % close all;
 clc;
