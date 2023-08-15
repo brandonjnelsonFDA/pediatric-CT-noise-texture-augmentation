@@ -4,3 +4,4 @@ Ped-ETK
 LCD_CT*
 .venv
 *.csv
+.data_aug

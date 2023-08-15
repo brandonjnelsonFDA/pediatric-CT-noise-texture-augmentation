@@ -60,6 +60,7 @@ The data used in this tutorial is made available through the AAPM and Mayo Clini
 import zipfile
 if not os.path.exists('data'): os.mkdir('data')
 if not os.path.exists('data/Denoising_Data'):
+  os.mkdir('data')
   urllib.request.urlretrieve('https://docs.google.com/uc?export=download&id=1-ZqL_1cqWeG6LsRAB0TwiddW8TgQ-q70', 'data/Denoising_Data.zip')
   with zipfile.ZipFile('data/Denoising_Data.zip', 'r') as zip_ref:
      zip_ref.extractall('data')
