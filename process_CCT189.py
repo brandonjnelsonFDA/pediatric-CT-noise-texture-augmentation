@@ -5,7 +5,7 @@ import zipfile
 import tensorflow as tf
 import SimpleITK as sitk
 
-data_dir = Path('data')
+data_dir = Path('D:\Dev\Datasets\CCT189_CT_sims') #Path('data')
 if not data_dir.exists():
     data_dir.mkdir(parents=True)
     url = 'https://zenodo.org/record/7996580/files/large_dataset.zip?download=1'

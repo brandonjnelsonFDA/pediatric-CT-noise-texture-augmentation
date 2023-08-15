@@ -6,8 +6,9 @@ Start by
 3. [X] Use the downloaded denoisers to process the CCT189 images
 4. [X] Use the LCD toolkit to evaluate the two models trained in the tutorial (see if VGG actually made a difference)
 5. save that tutorial as a new "advanced tutorial" for the LCD toolkit
-6. next get a baseline performance of these models with PED-ETK
+6. [X] next get a baseline performance of these models with PED-ETK
 7. start developing data aug and compare reevaluate comparing against previous baselines
+ - ready on [google colab](https://colab.research.google.com/drive/1aYFFunBcIK2D98qPEmMVqO98uVWepziW#scrollTo=Zt9LBQdAHfYy), need to bring here
 
 ![Alt text](LCD_results.png)
 These are the preliminary results for the standard LCD CT (step 4)
@@ -20,3 +21,5 @@ conda activate peds_aug_tensorflow
 
 ### Pip
 pip install -r requirements.txt
+TODO Fix: headers of mhd files in peds dataset to remove spaces "    "
+TODO change process_CCT189.py to give folder names to the recon type rather than fbp
