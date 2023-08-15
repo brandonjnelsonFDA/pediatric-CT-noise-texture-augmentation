@@ -19,6 +19,8 @@ if not data_dir.exists():
 simple_cnn_denoiser = tf.keras.models.load_model('models/simple_cnn_denoiser')
 simple_cnn_denoiser.summary()
 # %%
+simple_cnn_denoiser_augmented = tf.keras.models.load_model('models/simple_cnn_denoiser_augmented')
+# %%
 model_vggloss = tf.keras.models.load_model('models/model_vggloss', compile=False) #compile = False means don't need to load custom loss function
 model_vggloss.summary()
 # %%
@@ -46,30 +48,36 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
 
 model = simple_cnn_denoiser
 datasets = [ 
-            {
-            'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
-            'model': simple_cnn_denoiser,
-            'name': 'CCT189 simple CNN'
-            }, 
-            {
-            'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-            'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_vgg',
-            'model': model_vggloss,
-            'name': 'CCT189 simple CNN VGG Loss'
-            },
+            # {
+            # 'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
+            # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
+            # 'model': simple_cnn_denoiser,
+            # 'name': 'CCT189 simple CNN'
+            # }, 
+            # {
+            # 'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
+            # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_vgg',
+            # 'model': model_vggloss,
+            # 'name': 'CCT189 simple CNN VGG Loss'
+            # },
+            # {
+            # 'input_dir': data_dir / 'CCT189_peds',
+            # 'output_dir': data_dir / 'CCT189_peds_denoised_mse',
+            # 'model': simple_cnn_denoiser,
+            # 'name': 'CCT189 ped sized simple CNN',
+            # },
             {
             'input_dir': data_dir / 'CCT189_peds',
             'output_dir': data_dir / 'CCT189_peds_denoised_mse',
-            'model': simple_cnn_denoiser,
-            'name': 'CCT189 ped sized simple CNN',
+            'model': simple_cnn_denoiser_augmented,
+            'name': 'CCT189 ped sized simple CNN with augmentation',
             },
-            {
-            'input_dir': data_dir / 'CCT189_peds',
-            'output_dir': data_dir / 'CCT189_peds_denoised_vgg',
-            'model': model_vggloss,
-            'name': 'CCT189 ped sized simple CNN VGG Loss'
-            }
+            # {
+            # 'input_dir': data_dir / 'CCT189_peds',
+            # 'output_dir': data_dir / 'CCT189_peds_denoised_vgg',
+            # 'model': model_vggloss,
+            # 'name': 'CCT189 ped sized simple CNN VGG Loss'
+            # }
             ]
 for dataset in datasets:
     denoise(**dataset)
