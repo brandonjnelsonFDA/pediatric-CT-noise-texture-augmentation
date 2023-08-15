@@ -11,3 +11,12 @@ Start by
 
 ![Alt text](LCD_results.png)
 These are the preliminary results for the standard LCD CT (step 4)
+
+## Install 
+
+### Conda
+conda create -n peds_aug_tensorflow --file requirements.txt -y -c simpleitk
+conda activate peds_aug_tensorflow
+
+### Pip
+pip install -r requirements.txt
