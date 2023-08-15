@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# sns.set_style('white')
+sns.set_theme()
 
 res = pd.read_csv('lcd_v_diameter_results.csv')
 res = res[~res.duplicated()]
@@ -38,7 +38,7 @@ delta_df = temp[temp.recon != 'fbp']
 delta_df['$\Delta auc$'] = delta_df['auc'] - ref_auc
 delta_df.pop('auc')
 delta_df.pop('snr')
-sns.lineplot(ax=axs[1], data=delta_df, x='dose level [%]', y = '$\Delta auc$', hue='recon')
+sns.lineplot(ax=axs[1], data=delta_df, x='dose level [%]', y = '$\Delta auc$', hue='recon', style='observer')
 axs[1].hlines(y=0, xmin=0, xmax=100, color='black', linestyle='--')
 axs[1].set_title('Task advantage following denoising')
 f.tight_layout()
@@ -55,7 +55,7 @@ delta_df = temp[temp.recon != 'fbp']
 delta_df['$\Delta auc$'] = delta_df['auc'] - ref_auc
 delta_df.pop('auc')
 delta_df.pop('snr')
-sns.lineplot(ax=axs[1], data=delta_df, x='diameter', y = '$\Delta auc$', hue='recon')
+sns.lineplot(ax=axs[1], data=delta_df, x='diameter', y = '$\Delta auc$', hue='recon', style='observer')
 axs[1].hlines(y=0, xmin=100, xmax=350, color='black', linestyle='--')
 axs[1].set_title('Task advantage following denoising')
 f.tight_layout()

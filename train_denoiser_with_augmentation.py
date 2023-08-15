@@ -25,12 +25,12 @@ import urllib
 import tensorflow as tf
 
 from tensorflow import keras
-from scipy import ndimage, misc
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.style as style
-import time
 import os
+import seaborn as sns
+sns.set_theme()
+sns.set_style("white")
 # %%
 """## Loading Data
 
@@ -222,18 +222,70 @@ noise_images = noise_images.reshape([*noise_images.shape, 1])
 noise_images.shape
 plt.imshow(noise_images[1])
 # %%
+import numpy as np
+def compute_nps(image):
+
+  if image.ndim == 2:
+    image = image[None, :, :]
+
+  nsize = image.shape
+  nrealization = nsize[0]
+  if image.ndim == 3:
+    nps = np.zeros((nsize[1],nsize[2]))
+    for i in range(nrealization):
+      subimage = image[i]
+      s = np.fft.fftshift(np.fft.fft2(image[i]))
+      nps = np.abs(s)**2 + nps
+    nps = nps/(nsize[1]*nsize[2]);
+  else:
+    raise ValueError(f'Image of dimension {image.ndim} Not implemented!')
+  return nps
+# %%
+nps = compute_nps(noise_images[:,:,:,0])
+plt.imshow(nps)
+def radial_profile(data, center=None):
+    center = center or (data.shape[0]/2, data.shape[1]/2)
+    y, x = np.indices((data.shape))
+    r = np.sqrt((x - center[0])**2 + (y - center[1])**2)
+    r = r.astype(int)
+
+    tbin = np.bincount(r.ravel(), data.ravel())
+    nr = np.bincount(r.ravel())
+    radialprofile = tbin / nr
+    return radialprofile
+# %%
+nps_1d = radial_profile(nps)
+plt.plot(nps_1d)
+# %%
 from sklearn.feature_extraction.image import PatchExtractor
 patch_sz = (30, 30)
 noise_patches = PatchExtractor(patch_size=patch_sz, max_patches=30).transform(noise_images)
 noise_patches.shape
+# %%
+f, axs = plt.subplots(1, 2)
+axs[0].plot(nps_1d)
+axs[1].plot(radial_profile(compute_nps(noise_patches)))
+# %%
+train_noise = train_target - train_input
+f, axs = plt.subplots(1,2)
+axs[0].imshow(compute_nps(train_noise[:,:,:,0]))
+axs[1].imshow(compute_nps(noise_patches))
+# %%
+f, axs = plt.subplots(1, 2)
+axs[0].plot(nps_1d)
+axs[1].plot(radial_profile(compute_nps(noise_patches)), label='proposed data aug noise')
+axs[1].plot(radial_profile(compute_nps(train_noise[:,:,:,0])), label='training set noise')
+plt.legend()
 # %%
 def augment(image_label, seed, max_noise=1):
   image, label = image_label
   new_seed = tf.random.experimental.stateless_split(seed, num=1)[0, :]
   noise_patch = noise_patches[np.random.choice(list(range(len(noise_patches))))][:,:,None]
   noise_lambda = tf.random.uniform([1], minval=0, maxval=max_noise)
-  # print(float(noise_lambda[0]))
-  image = image + noise_lambda[0]*noise_patch
+
+  add_noise = tf.random.uniform([1], minval=0, maxval=1) > 0.5
+  if add_noise:
+    image = image + noise_lambda[0]*noise_patch
   return image, label
 # %%
 batch_size = 32
@@ -279,7 +331,7 @@ optimizer = tf.keras.optimizers.legacy.Adam(lr=learning_rate)
 denoising_model.compile(optimizer=optimizer, loss='mse')
 
 # This sets the number of iterations through the training data
-epochs = 30
+epochs = 15
 
 # This sets the number of images patches used to calcualte a single
 # parameter update.
@@ -301,13 +353,14 @@ progress_ims = []
 
 AUTOTUNE = tf.data.AUTOTUNE
 
-def train(loss_function, model, augment=False):
+def train(loss_function, model, augment_training=False):
 
     train_ds = (
         train_dataset
         .map(f, num_parallel_calls=AUTOTUNE)
-       .prefetch(AUTOTUNE)
-    ) if augment else (
+        .batch(batch_size)
+        .prefetch(AUTOTUNE)
+    ) if augment_training else (
         train_dataset
        .prefetch(AUTOTUNE)
     )
@@ -347,12 +400,14 @@ def train(loss_function, model, augment=False):
 
 # Now run the training fuction to obtain the trained model and performance at
 # intermediate steps
-denoising_model = build_model()
-denoising_model.compile(optimizer=optimizer, loss='mse')
-denoising_model, progress_ims, progress_val = train(loss_function='mse', model=denoising_model, augment=augment_training)
+for augment_training in [True, False]:
+  denoising_model = build_model()
+  denoising_model.compile(optimizer=optimizer, loss='mse')
+  print(f'Running augmented training: {augment_training}')
+  denoising_model, progress_ims, progress_val = train(loss_function='mse', model=denoising_model, augment_training=augment_training)
 
-save_name = 'models/simple_cnn_denoiser_augmented' if augment_training else 'models/simple_cnn_denoiser'
-tf.keras.models.save_model(denoising_model, save_name)
+  save_name = 'models/simple_cnn_denoiser_augmented' if augment_training else 'models/simple_cnn_denoiser'
+  tf.keras.models.save_model(denoising_model, save_name)
 
 # %%
 #Cell 8

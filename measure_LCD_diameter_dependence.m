@@ -5,7 +5,8 @@ if ~exist(base_data_folder)
 end
 
 addpath(genpath('LCD_CT'));
-observers = {LG_CHO_2D()};
+observers = {LG_CHO_2D(),...
+             NPWE_2D()};
 % observers = {DOG_CHO_2D()}
 % observers = {LG_CHO_2D(),...
 %              DOG_CHO_2D(),...
@@ -40,7 +41,11 @@ for i = 1:length(series_list)
   if i==1
       res_table = res;
   end
-  res_table = cat(1, res_table, res);
+  if is_octave
+    res_table = vertcat(res_table, res);
+  else
+    res_table = cat(1, res_table, res);
+  end
 
 end
 write_lcd_results(res_table, 'lcd_v_diameter_results.csv')
