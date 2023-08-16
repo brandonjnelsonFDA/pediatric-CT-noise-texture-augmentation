@@ -206,76 +206,12 @@ For this part of the tutorial, the CNN parameters will be optimized with one goa
 We can train the model provided the datasets we previously loaded. When running on Google Colab, you will want to utilize a GPU for this optimization procedure. Click **Runtime** above, then **Change Runtime Type** in the drop down menu, finally select **GPU** under hardware accelerator. It should take the GPU under three minutes to train the model with default parameters.
 """
 # %% [markdown] make data augmentation
-import SimpleITK as sitk
-from itertools import combinations
-
-dose = 100
-def get_signal_absent_images(dose_level=100):
-  sa_path = f'LCD_CT/data/small_dataset/fbp/dose_{dose:03.0f}/signal_absent/signal_absent.mhd'
-  return sitk.GetArrayFromImage(sitk.ReadImage(sa_path))
-
-sa = get_signal_absent_images(dose)
-sa.shape
-
-noise_images = np.array([s[1] - s[0] for s in combinations(sa, 2)])
-noise_images = noise_images.reshape([*noise_images.shape, 1])
-noise_images.shape
-plt.imshow(noise_images[1])
-# %%
-import numpy as np
-def compute_nps(image):
-
-  if image.ndim == 2:
-    image = image[None, :, :]
-
-  nsize = image.shape
-  nrealization = nsize[0]
-  if image.ndim == 3:
-    nps = np.zeros((nsize[1],nsize[2]))
-    for i in range(nrealization):
-      subimage = image[i]
-      s = np.fft.fftshift(np.fft.fft2(image[i]))
-      nps = np.abs(s)**2 + nps
-    nps = nps/(nsize[1]*nsize[2]);
-  else:
-    raise ValueError(f'Image of dimension {image.ndim} Not implemented!')
-  return nps
-# %%
-nps = compute_nps(noise_images[:,:,:,0])
-plt.imshow(nps)
-def radial_profile(data, center=None):
-    center = center or (data.shape[0]/2, data.shape[1]/2)
-    y, x = np.indices((data.shape))
-    r = np.sqrt((x - center[0])**2 + (y - center[1])**2)
-    r = r.astype(int)
-
-    tbin = np.bincount(r.ravel(), data.ravel())
-    nr = np.bincount(r.ravel())
-    radialprofile = tbin / nr
-    return radialprofile
-# %%
-nps_1d = radial_profile(nps)
-plt.plot(nps_1d)
-# %%
-from sklearn.feature_extraction.image import PatchExtractor
-patch_sz = (30, 30)
-noise_patches = PatchExtractor(patch_size=patch_sz, max_patches=30).transform(noise_images)
+from pathlib import Path
+noise_patch_dir = Path('noise_patches')
+noise_patch_dict = {f.stem: np.load(f) for f in noise_patch_dir.glob('*.npy')}
+print(noise_patch_dict.keys())
+noise_patches = np.concatenate(list(noise_patch_dict.values()))
 noise_patches.shape
-# %%
-f, axs = plt.subplots(1, 2)
-axs[0].plot(nps_1d)
-axs[1].plot(radial_profile(compute_nps(noise_patches)))
-# %%
-train_noise = train_target - train_input
-f, axs = plt.subplots(1,2)
-axs[0].imshow(compute_nps(train_noise[:,:,:,0]))
-axs[1].imshow(compute_nps(noise_patches))
-# %%
-f, axs = plt.subplots(1, 2)
-axs[0].plot(nps_1d)
-axs[1].plot(radial_profile(compute_nps(noise_patches)), label='proposed data aug noise')
-axs[1].plot(radial_profile(compute_nps(train_noise[:,:,:,0])), label='training set noise')
-plt.legend()
 # %%
 def augment(image_label, seed, max_noise=1):
   image, label = image_label

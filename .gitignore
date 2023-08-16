@@ -5,3 +5,5 @@ LCD_CT*
 .venv
 *.csv
 .data_aug
+noise_patches
+*.pyc
