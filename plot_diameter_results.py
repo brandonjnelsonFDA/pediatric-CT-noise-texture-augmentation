@@ -46,6 +46,28 @@ f.tight_layout()
 f.savefig('auc_v_dose_with_comp.png', dpi=600, facecolor='white')
 # %%
 f, axs = plt.subplots(1, 2, figsize = (8,4))
+sns.lineplot(ax=axs[0], data=res[(res['dose level [%]']==25) & (res['recon'] != 'simple CNN MSE with augmentation')], x='diameter', y='auc', hue='recon', style='observer') # | (res.diameter == 292) | (res.diameter == 350)
+temp = res[(res.diameter != 200)]
+
+# dose_lvl = temp[temp.recon == 'cnn-mse']['dose level [%]'].to_numpy()
+ref_auc = temp[temp.recon == 'fbp'].pop('auc')
+ref_auc = np.concatenate([ref_auc, ref_auc])
+delta_df = temp[temp.recon != 'fbp']
+delta_df['$\Delta auc$'] = delta_df['auc'] - ref_auc
+delta_df.pop('auc')
+delta_df.pop('snr')
+delta_df = delta_df[delta_df['recon'] != 'simple CNN MSE with augmentation']
+sns.lineplot(ax=axs[1], data=delta_df, x='diameter', y = '$\Delta auc$', hue='recon', style='observer')
+axs[1].hlines(y=0, xmin=100, xmax=350, color='black', linestyle='--')
+axs[1].set_title('Task advantage following denoising')
+f.tight_layout()
+f.savefig('auc_v_diameter_w_comp.png', dpi=600, facecolor='white')
+axs[0].legend(loc='upper center', bbox_to_anchor=(1.05, 1.45),
+          ncol=2, fancybox=True, shadow=False)
+axs[1].get_legend().remove()
+f.savefig('auc_v_diameter_no_augmentation.png', dpi=600, facecolor='white', bbox_inches='tight')
+# %%
+f, axs = plt.subplots(1, 2, figsize = (8,4))
 sns.lineplot(ax=axs[0], data=res[(res['dose level [%]']==25)], x='diameter', y='auc', hue='recon', style='observer') # | (res.diameter == 292) | (res.diameter == 350)
 temp = res[(res.diameter != 200)]
 
