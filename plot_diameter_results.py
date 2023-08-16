@@ -64,6 +64,7 @@ f.savefig('auc_v_diameter_w_comp.png', dpi=600, facecolor='white')
 axs[0].legend(loc='upper center', bbox_to_anchor=(1.05, 1.45),
           ncol=2, fancybox=True, shadow=False)
 axs[1].get_legend().remove()
+f.savefig('auc_v_diameter_with_comp.png', dpi=600, facecolor='white', bbox_inches='tight')
 # %%
 HUs = res.insert_HU.unique()
 f, axs = plt.subplots(2, 2, sharex=True,sharey=True, tight_layout=True, figsize=(8, 6))
