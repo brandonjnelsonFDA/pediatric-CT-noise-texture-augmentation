@@ -25,6 +25,9 @@ series_2.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse');
 series_3.name = 'Simple CNN VGG'
 series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_vgg');
 
+series_3.name = 'Simple CNN MSE with Data Augmentation'
+series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse_w_augmentation');
+
 series_list = [series_1, series_2, series_3];
 
 ground_truth_filename = fullfile(base_data_folder, 'ground_truth.mhd');

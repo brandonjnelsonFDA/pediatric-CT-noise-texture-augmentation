@@ -29,15 +29,16 @@ import SimpleITK as sitk
 # %%
 from pathlib import Path
 # %%
-def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batch_size=10):
+def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batch_size=10, overwrite=True):
     for series in input_dir.rglob('*.mhd'):
         if series.stem == 'ground_truth':
             continue
         input_image = sitk.ReadImage(series)
         output = Path(str(series).replace(str(input_dir), str(output_dir)))
-        if output.exists():
+        if output.exists() & (not overwrite):
             print(f'{output} already found, skipping {name}')
         else:
+            output = Path(str(output).replace('fbp', name))
             output.parent.mkdir(parents=True, exist_ok=True)
             x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
             input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, x, y, 1).astype('float32') - offset
@@ -52,31 +53,31 @@ datasets = [
             # 'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
             # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
             # 'model': simple_cnn_denoiser,
-            # 'name': 'CCT189 simple CNN'
+            # 'name': 'simple CNN'
             # }, 
             # {
             # 'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
             # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_vgg',
             # 'model': model_vggloss,
-            # 'name': 'CCT189 simple CNN VGG Loss'
-            # },
-            # {
-            # 'input_dir': data_dir / 'CCT189_peds',
-            # 'output_dir': data_dir / 'CCT189_peds_denoised_mse',
-            # 'model': simple_cnn_denoiser,
-            # 'name': 'CCT189 ped sized simple CNN',
+            # 'name': 'simple CNN VGG Loss'
             # },
             {
             'input_dir': data_dir / 'CCT189_peds',
             'output_dir': data_dir / 'CCT189_peds_denoised_mse',
+            'model': simple_cnn_denoiser,
+            'name': 'simple CNN MSE',
+            },
+            {
+            'input_dir': data_dir / 'CCT189_peds',
+            'output_dir': data_dir / 'CCT189_peds_denoised_mse_w_augmentation',
             'model': simple_cnn_denoiser_augmented,
-            'name': 'CCT189 ped sized simple CNN with augmentation',
+            'name': 'simple CNN MSE with augmentation',
             },
             # {
             # 'input_dir': data_dir / 'CCT189_peds',
             # 'output_dir': data_dir / 'CCT189_peds_denoised_vgg',
             # 'model': model_vggloss,
-            # 'name': 'CCT189 ped sized simple CNN VGG Loss'
+            # 'name': 'simple CNN VGG Loss'
             # }
             ]
 for dataset in datasets:
