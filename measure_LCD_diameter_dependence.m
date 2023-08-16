@@ -15,7 +15,7 @@ observers = {LG_CHO_2D(),...
 
 %% Select datasets
 base_directory = 'data';
-base_directory = 'D:\Dev\Datasets\CCT189_CT_sims'
+base_directory = 'H:\Dev\Datasets\CCT189_CT_sims'
 series_1.name = 'fbp';
 series_1.dir = fullfile(base_directory, 'CCT189_peds');
 

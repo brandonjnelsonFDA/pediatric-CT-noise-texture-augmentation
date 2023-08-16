@@ -10,9 +10,10 @@ res = res[~res.duplicated()]
 #%%
 res.rename(columns={'dose_level': 'dose level [%]'}, inplace=True)
 res = res[res.diameter != 200]
-f, ax = plt.subplots(figsize=(4.5,3.5))
-
-sns.lineplot(ax=ax, data=res[(res['dose level [%]']==100) | (res['dose level [%]'] ==25)], x='diameter', y='auc', hue='recon', style='dose level [%]')
+f, axs = plt.subplots(1,2)
+data_df = res[(res['dose level [%]']==100) | (res['dose level [%]'] ==25)]
+sns.lineplot(ax=axs[0], data=data_df[res['observer'] != 'NPW 2D'], x='diameter', y='auc', hue='recon', style='dose level [%]')
+sns.lineplot(ax=axs[1], data=data_df[res['observer'] == 'NPW 2D'], x='diameter', y='auc', hue='recon', style='dose level [%]')
 f.tight_layout()
 f.savefig('auc_v_diameter.png', dpi=600, facecolor='white')
 # %%
@@ -45,7 +46,7 @@ f.tight_layout()
 f.savefig('auc_v_dose_with_comp.png', dpi=600, facecolor='white')
 # %%
 f, axs = plt.subplots(1, 2, figsize = (8,4))
-sns.lineplot(ax=axs[0], data=res[(res['dose level [%]']==25)], x='diameter', y='auc', hue='recon', style='dose level [%]') # | (res.diameter == 292) | (res.diameter == 350)
+sns.lineplot(ax=axs[0], data=res[(res['dose level [%]']==25)], x='diameter', y='auc', hue='recon', style='observer') # | (res.diameter == 292) | (res.diameter == 350)
 temp = res[(res.diameter != 200)]
 
 # dose_lvl = temp[temp.recon == 'cnn-mse']['dose level [%]'].to_numpy()
@@ -59,7 +60,10 @@ sns.lineplot(ax=axs[1], data=delta_df, x='diameter', y = '$\Delta auc$', hue='re
 axs[1].hlines(y=0, xmin=100, xmax=350, color='black', linestyle='--')
 axs[1].set_title('Task advantage following denoising')
 f.tight_layout()
-f.savefig('auc_v_diameter.png', dpi=600, facecolor='white')
+f.savefig('auc_v_diameter_w_comp.png', dpi=600, facecolor='white')
+axs[0].legend(loc='upper center', bbox_to_anchor=(1.05, 1.45),
+          ncol=2, fancybox=True, shadow=False)
+axs[1].get_legend().remove()
 # %%
 HUs = res.insert_HU.unique()
 f, axs = plt.subplots(2, 2, sharex=True,sharey=True, tight_layout=True, figsize=(8, 6))
