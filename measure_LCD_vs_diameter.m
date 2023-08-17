@@ -1,7 +1,10 @@
 function res_table = measure_LCD_vs_diameter(base_data_folder, observers, ground_truth, offset)
   diameter_dirs = dir(fullfile(base_data_folder, 'diameter*mm'));
   n_diameters = length(diameter_dirs);
-
+  
+  if n_diameters < 1
+    error(["No folders matching the pattern `diameter*mm` found in: " base_data_folder])
+  end
   for diam_idx=1:n_diameters
       diameter_dir=diameter_dirs(diam_idx).name;
       diameter = regexp(diameter_dir, '\d+', 'match'); diameter = str2num(diameter{:});

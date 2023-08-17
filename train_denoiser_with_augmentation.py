@@ -221,7 +221,8 @@ def augment(image_label, seed, max_noise=1):
 
   add_noise = tf.random.uniform([1], minval=0, maxval=1) > 0.5
   if add_noise:
-    image = image + noise_lambda[0]*noise_patch
+    image = label + noise_lambda[0]*noise_patch
+    # image = image + noise_lambda[0]*noise_patch
   return image, label
 # %%
 batch_size = 32
@@ -236,14 +237,13 @@ rng = tf.random.Generator.from_seed(123, alg='philox')
 def f(x, y):
   seed = rng.make_seeds(2)[0]
   image, label = augment((x, y), seed)
-  return image[0], label[0]
+  return image, label
 
-fig, axs = plt.subplots(3, 3, figsize=(10, 10))
+fig, axs = plt.subplots(4, 3, figsize=(10, 12))
 for images, labels in train_dataset.take(1):
   for i in range(3):
     img = np.array(images[i])
-    # aug_image = augment((img, labels[i]), [0, 0])[0]
-    aug_image = f((img, labels[i]), [0, 0])[0]
+    aug_image = f(img, labels[i])[0]
 
     axs[0, i].imshow(img[:,:,0], cmap='gray')
     axs[0, i].set_title(f'{img.std():0.4f}')
@@ -252,6 +252,8 @@ for images, labels in train_dataset.take(1):
     diff = aug_image - img
     axs[2, i].imshow(diff[:,:,0], cmap='gray')
     axs[2, i].set_title(f'{np.array(diff).std():0.4f}')
+    axs[3, i].imshow(labels[i][:,:,0], cmap='gray')
+    axs[3, i].set_title(f'{np.array(labels[i][:,:,0]).std():0.4f}')
 # %%
 augment_training = True
 
@@ -294,7 +296,6 @@ def train(loss_function, model, augment_training=False):
     train_ds = (
         train_dataset
         .map(f, num_parallel_calls=AUTOTUNE)
-        .batch(batch_size)
         .prefetch(AUTOTUNE)
     ) if augment_training else (
         train_dataset

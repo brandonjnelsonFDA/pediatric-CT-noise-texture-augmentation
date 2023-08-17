@@ -23,3 +23,20 @@ conda activate peds_aug_tensorflow
 pip install -r requirements.txt
 TODO Fix: headers of mhd files in peds dataset to remove spaces "    "
 TODO change process_CCT189.py to give folder names to the recon type rather than fbp
+
+## Steps
+
+1. train model with and without augmentation: `train_denoiser_with_augmentation.py`
+2. process test images `process_CCT189.py`
+3. evaluation test images `measure_LCD_diameter_dependence.m`
+4. plot auc vs diameter results `plot_diameter_results.py`
+
+FAQS
+
+Octave
+If installing and running a fresh Octab
+
+
+Installing Image on Octave
+pkg: please install the Debian package "liboctave-dev" to get the mkoctfile command:
+sudo apt-get install liboctave-dev
