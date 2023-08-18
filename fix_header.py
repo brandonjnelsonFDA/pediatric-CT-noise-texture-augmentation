@@ -7,9 +7,7 @@ def fix_header(header_file):
      with open(header_file,'w') as f:
          f.write(fixed)
 
-s = Path(r'D:\Dev\Datasets\CCT189_CT_sims\CCT189_peds')
-
-paths = list(s.glob('diameter*'))
+s = Path('/gpfs_projects/brandon.nelson/RSTs/Peds_datasets/CCT189')
      
-for p in paths:
+for p in s.rglob('*.mhd'):
      fix_header(p)

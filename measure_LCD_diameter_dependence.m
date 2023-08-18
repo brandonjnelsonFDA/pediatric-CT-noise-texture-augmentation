@@ -1,9 +1,14 @@
 #! /bin/octave -qf
-arg_list = argv ();
+arg_list = argv ()
 if length(arg_list) > 0
   base_directory = arg_list{1}
+  if length(arg_list) > 1
+    save_file = arg_list{2}
+  else
+    save_file = 'lcd_v_diameter.csv'
+  end
 else
-  base_directory = 'H:\Dev\Datasets\CCT189_CT_sims\CCT189_peds';
+  base_directory = 'H:\Dev\Datasets\CCT189_CT_sims\CCT189';
 end
 if ~exist(base_directory)
   unzip('https://sandbox.zenodo.org/record/1213653/files/CCT189.zip')
@@ -25,12 +30,12 @@ observers = {LG_CHO_2D(),...
 
 %% Select datasets
 series_1.name = 'fbp';
-series_1.dir = fullfile(base_directory, 'CCT189_peds');
+series_1.dir = fullfile(base_directory, 'CCT189_peds_fbp');
 
 series_2.name = 'Simple CNN MSE';
 series_2.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse');
 
-series_3.name = 'Simple CNN VGG'
+series_3.name = 'Simple CNN VGG';
 series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_vgg');
 
 series_3.name = 'Simple CNN MSE with Data Augmentation';
@@ -38,10 +43,10 @@ series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse_w_augmentatio
 
 series_list = [series_1, series_2, series_3];
 
-ground_truth_filename = fullfile(base_directory, 'CCT189_peds', 'ground_truth.mhd')
+ground_truth_filename = fullfile(series_1.dir, 'ground_truth.mhd')
 offset = 1000;
 if ~exist(ground_truth_filename, 'file')
-    fname = fullfile(base_directory, 'diameter292mm', 'fbp');
+    fname = fullfile(series_1.dir, 'diameter292mm', 'fbp');
     ground_truth = approximate_groundtruth(fname, ground_truth_filename, offset);
 end
 ground_truth = mhd_read_image(ground_truth_filename) - offset;
@@ -59,5 +64,4 @@ for i = 1:length(series_list)
   end
 
 end
-write_lcd_results(res_table, 'lcd_v_diameter_results.csv')
-% where's the ground truth? Need to add to the dataset
+write_lcd_results(res_table, save_file)
