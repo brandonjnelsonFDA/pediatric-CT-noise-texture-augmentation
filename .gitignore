@@ -7,3 +7,4 @@ LCD_CT*
 .data_aug
 noise_patches
 *.pyc
+results

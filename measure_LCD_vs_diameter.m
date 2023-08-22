@@ -15,7 +15,7 @@ function res_table = measure_LCD_vs_diameter(base_data_folder, observers, ground
         recon_dir = recons(recon_idx).folder;
         res = measure_LCD(fullfile(recon_dir, recon), observers, ground_truth, offset);
         if is_octave
-         res.recon = string(recon);
+         res.recon = repmat(recon, [height(res), 1]);
          res.diameter = diameter;
         else
           res.recon(:) = string(recon);

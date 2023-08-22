@@ -13,6 +13,9 @@ from sklearn.feature_extraction.image import PatchExtractor
 def load_mhd(mhd_file): return sitk.GetArrayFromImage(sitk.ReadImage(mhd_file))
 
 
+def write_mhd(array, fname): sitk.WriteImage(sitk.GetImageFromArray(array), fname)
+
+
 def make_noise_images(sa_images, max_images = 2000):
     noise_images = []
     for idx, s in enumerate(combinations(sa_images, 2)):

@@ -7,7 +7,6 @@ from pathlib import Path
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
-import matplotlib.pyplot as plt
 
 # %%
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'

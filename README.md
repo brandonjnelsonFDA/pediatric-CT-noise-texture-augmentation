@@ -20,17 +20,14 @@ conda create -n peds_aug_tensorflow --file requirements.txt -y -c simpleitk
 conda activate peds_aug_tensorflow
 
 ### Pip
-pip install -r requirements.txt
-TODO Fix: headers of mhd files in peds dataset to remove spaces "    "
-TODO change process_CCT189.py to give folder names to the recon type rather than fbp
+
 
 ## Steps
 
-1. train model with and without augmentation: `train_denoiser_with_augmentation.py`
-2. process test images `process_CCT189.py`
-3. evaluation test images `measure_LCD_diameter_dependence.m`
-4. plot auc vs diameter results `plot_diameter_results.py`
-
+## TODOs
+1. try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together
+2. try transfer learning,
+3. 
 FAQS
 
 Octave
@@ -40,3 +37,6 @@ If installing and running a fresh Octab
 Installing Image on Octave
 pkg: please install the Debian package "liboctave-dev" to get the mkoctfile command:
 sudo apt-get install liboctave-dev
+
+Installing TexLive on Linux
+https://tug.org/texlive/quickinstall.html#running

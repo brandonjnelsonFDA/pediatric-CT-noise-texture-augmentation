@@ -1,14 +1,15 @@
 #! /bin/octave -qf
-arg_list = argv ()
+arg_list = argv ();
 if length(arg_list) > 0
   base_directory = arg_list{1}
   if length(arg_list) > 1
     save_file = arg_list{2}
-  else
-    save_file = 'lcd_v_diameter.csv'
   end
 else
-  base_directory = 'H:\Dev\Datasets\CCT189_CT_sims\CCT189';
+  base_directory = '/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds';
+end
+if ~exist('save_file', 'var')
+  save_file = 'lcd_v_diameter.csv'
 end
 if ~exist(base_directory)
   unzip('https://sandbox.zenodo.org/record/1213653/files/CCT189.zip')
@@ -34,9 +35,6 @@ series_1.dir = fullfile(base_directory, 'CCT189_peds_fbp');
 
 series_2.name = 'Simple CNN MSE';
 series_2.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse');
-
-series_3.name = 'Simple CNN VGG';
-series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_vgg');
 
 series_3.name = 'Simple CNN MSE with Data Augmentation';
 series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse_w_augmentation');

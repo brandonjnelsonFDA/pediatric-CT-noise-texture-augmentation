@@ -10,7 +10,6 @@ import SimpleITK as sitk
 
 simple_cnn_denoiser = tf.keras.models.load_model('models/simple_cnn_denoiser')
 simple_cnn_denoiser_augmented = tf.keras.models.load_model('models/simple_cnn_denoiser_augmented')
-model_vggloss = tf.keras.models.load_model('models/model_vggloss', compile=False) #compile = False means don't need to load custom loss function
 
 
 def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batch_size=10, overwrite=True):
@@ -31,8 +30,8 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
             sitk.WriteImage(sitk.GetImageFromArray(sp_denoised), output)
             print(f'{name} --> {output}')
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     parser = ArgumentParser(description='Runs XCIST CT simulations on XCAT datasets')
     parser.add_argument('base_directory', type=str, default="", help='directory containing images to be processed')
     args = parser.parse_args()
@@ -48,18 +47,6 @@ if __name__ == '__main__':
         with zipfile.ZipFile(fname,"r") as zip_ref:
             zip_ref.extractall(fname.split('.zip')[0])
     datasets = [ 
-                # {
-                # 'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-                # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_mse',
-                # 'model': simple_cnn_denoiser,
-                # 'name': 'simple CNN'
-                # }, 
-                # {
-                # 'input_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp',
-                # 'output_dir': data_dir / 'CCT189' / 'large_dataset' / 'fbp_denoised_vgg',
-                # 'model': model_vggloss,
-                # 'name': 'simple CNN VGG Loss'
-                # },
                 {
                 'input_dir': data_dir / 'CCT189_peds_fbp',
                 'output_dir': data_dir / 'CCT189_peds_denoised_mse',
@@ -72,12 +59,6 @@ if __name__ == '__main__':
                 'model': simple_cnn_denoiser_augmented,
                 'name': 'simple CNN MSE with augmentation',
                 },
-                # {
-                # 'input_dir': data_dir / 'CCT189_peds_fbp',
-                # 'output_dir': data_dir / 'CCT189_peds_denoised_vgg',
-                # 'model': model_vggloss,
-                # 'name': 'simple CNN VGG Loss'
-                # }
                 ]
     for dataset in datasets:
         denoise(**dataset)
