@@ -1,4 +1,4 @@
-#%% -*- coding: utf-8 -*-
+#%%
 import urllib
 import zipfile
 import os
@@ -88,8 +88,8 @@ def augment(image_label, seed, max_noise=1):
 
   add_noise = tf.random.uniform([1], minval=0, maxval=1) > 0.5
   if add_noise:
-    # image = label + noise_lambda[0]*noise_patch
-    image = image + noise_lambda[0]*noise_patch
+    image = label + noise_lambda[0]*noise_patch
+    # image = image + noise_lambda[0]*noise_patch
   return image, label
 
 # %%

@@ -1,11 +1,10 @@
 experiment_name=adding_noise_to_labels_151mm_only
 base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
-notes='Since the previous experiment of setting noise patches to zero and adding them to the inputs (negative control) showed the performance did (basically converge to MSE alone, that confirms that my augmentation is doing something.
-Although it was still a bit lower than CNN MSE -unaugmented-, I still should go in at some point to compare.
+# add notes written in LateX that will be added to the report and log
+notes='In the previous experiment I was adding 151mm noise to the *image*, rather than the *label* (what I said I was going to do). 
+So I corrected the file names to reflect this and am rerunning this experiment by adding noise to the label `image = label + noise_lambda[0]*noise_patch` [line 91] of `train_denoiser_with_augmentation.py`
 
-In this next experiment I am going back to the previous plan of adding noise patches to the low noise labels to make new high-low noise pairs, except now I am adding the 151mm diameter noise.
-
-This should be an easier task than the 112mm noise added previously. If this has no effect I will need to dig in more to the augmentation to make sure its doing what I expect.'
+If this continues to have minimal effect I will explore increasing the magnitude of added noise, by increasing the likihood of adding noise (raising the threshold of add_noise line 89)'
 LOG=results/results_log.md
 
 # Do not edit below
@@ -16,8 +15,8 @@ results_file=$results_dir/lcd_v_diameter_results.csv
 
 printf "$(date -u +%T\ %D): $experiment_name\n" >> $LOG
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' = >> $LOG
-printf '\n\n' >> $LOG
-printf "$notes \n\n" >> $LOG
+printf '\n' >> $LOG
+printf "$notes \n" >> $LOG
 
 noise_patch_dir='./noise_patches'
 if [ ! -d  $noise_patch_dir ]; then
