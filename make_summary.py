@@ -132,7 +132,7 @@ def main(results_dir, notes=None):
 
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'diffauc_v_diameter_hu.png'
-                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
+                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.8\linewidth'))
                 fig.add_caption('$\Delta AUC$ as a function of phantom diameter and insert HU')
 
     doc.generate_pdf(results_dir/'summary', clean_tex=True)

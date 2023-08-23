@@ -73,8 +73,12 @@ def build_model():
     return model
 
 noise_patch_dir = Path('noise_patches')
-noise_patch_dict = {f.stem: np.load(f) for f in noise_patch_dir.glob('*.npy')}
+# diameters = [112, 131, 151, 185, 200, 216, 292, 350]
+diameters = [151]
+noise_files = [noise_patch_dir / f'diameter{d}mm.npy' for d in diameters]
+noise_patch_dict = {f.stem: np.load(f) for f in noise_files}
 noise_patches = np.concatenate(list(noise_patch_dict.values()))
+# noise_patches = np.zeros_like(noise_patches)
 
 def augment(image_label, seed, max_noise=1):
   image, label = image_label
@@ -84,8 +88,8 @@ def augment(image_label, seed, max_noise=1):
 
   add_noise = tf.random.uniform([1], minval=0, maxval=1) > 0.5
   if add_noise:
-    image = label + noise_lambda[0]*noise_patch
-    # image = image + noise_lambda[0]*noise_patch
+    # image = label + noise_lambda[0]*noise_patch
+    image = image + noise_lambda[0]*noise_patch
   return image, label
 
 # %%
