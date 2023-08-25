@@ -31,30 +31,11 @@ conda activate peds_aug_tensorflow
 3. 
 FAQS
 
-Common errors:
 Octave
-
 If installing and running a fresh Octab
 
-Installing Image on Octave `pkg install -forge image` 
 
-```
-    /bin/bash: /home/brandon.nelson/miniconda3/envs/peds_data_aug/lib/libtinfo.so.6: no version information available (required by /bin/bash)
-    /bin/bash: /home/brandon.nelson/miniconda3/envs/peds_data_aug/lib/libtinfo.so.6: no version information available (required by /bin/bash)
-    configure: error: in `/tmp/oct-6zg6LA/image-2.14.0/src':
-    configure: error: C++ compiler cannot create executables
-    See `config.log' for more details
-    checking for a sed that does not truncate output... /usr/bin/sed
-    checking for octave... /home/brandon.nelson/miniconda3/envs/peds_data_aug/bin/octave-7.3.0
-    checking for mkoctfile... /home/brandon.nelson/miniconda3/envs/peds_data_aug/bin/mkoctfile-7.3.0
-    checking whether the C++ compiler works... no
-
-    error: pkg: error running the configure script for image
-    error: called from
-        configure_make at line 101 column 9
-        install at line 202 column 
-```
-
+Installing Image on Octave
 pkg: please install the Debian package "liboctave-dev" to get the mkoctfile command:
 sudo apt-get install liboctave-dev
 

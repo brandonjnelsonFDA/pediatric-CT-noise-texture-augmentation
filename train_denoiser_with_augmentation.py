@@ -7,6 +7,7 @@ from pathlib import Path
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
+from tensorflow.keras.metrics import RootMeanSquaredError
 
 # %%
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -57,7 +58,7 @@ def build_model():
           kernel_size=kernel_size,
           strides=strides,
           padding='same')(x)
-        x = keras.layers.Activation(activation)(x)
+        x = tf.keras.layers.ReLU()(x)
     # Final layer has just one feature map corresponding to the output image
     x = keras.layers.Conv2D(
         filters=1,
@@ -74,33 +75,35 @@ def build_model():
 
 noise_patch_dir = Path('noise_patches')
 # diameters = [112, 131, 151, 185, 200, 216, 292, 350]
-diameters = [151]
+diameters = [112, 131, 151, 185, 216, 292]
+
 noise_files = [noise_patch_dir / f'diameter{d}mm.npy' for d in diameters]
 noise_patch_dict = {f.stem: np.load(f) for f in noise_files}
 noise_patches = np.concatenate(list(noise_patch_dict.values()))
 # noise_patches = np.zeros_like(noise_patches)
-
+# %%
 def augment(image_label, seed, max_noise=1):
   image, label = image_label
   new_seed = tf.random.experimental.stateless_split(seed, num=1)[0, :]
   noise_patch = noise_patches[np.random.choice(list(range(len(noise_patches))))][:,:,None]
-  noise_lambda = tf.random.uniform([1], minval=0, maxval=max_noise)
+  noise_lambda = tf.random.uniform([1], minval=0, maxval=max_noise)[0] #max noise controls magnitude of augmentation, higher means more
+  add_noise = tf.random.uniform([1], minval=0, maxval=1) > 0.4 #from 0.5 #controls frequency of augmentation, lower threshold means more
 
-  add_noise = tf.random.uniform([1], minval=0, maxval=1) > 0.5
   if add_noise:
-    image = label + noise_lambda[0]*noise_patch
-    # image = image + noise_lambda[0]*noise_patch
+    image = label + noise_lambda*noise_patch
   return image, label
 
 # %%
 batch_size = 32
 SHUFFLE_BUFFER_SIZE = 100
+# %%
 train_dataset = tf.data.Dataset.from_tensor_slices((train_input, train_target))
 val_dataset = tf.data.Dataset.from_tensor_slices((val_input, val_target))
 test_dataset = tf.data.Dataset.from_tensor_slices((test_input, test_target))
+# %%
 train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(batch_size)
 test_dataset = test_dataset.batch(batch_size)
-
+# %%
 rng = tf.random.Generator.from_seed(123, alg='philox')
 def f(x, y):
   seed = rng.make_seeds(2)[0]
@@ -114,10 +117,6 @@ test_dataset = tf.data.Dataset.from_tensor_slices((test_input, test_target))
 train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(batch_size)
 test_dataset = test_dataset.batch(batch_size)
 
-denoising_model = build_model()
-learning_rate = 0.0001
-optimizer = tf.keras.optimizers.legacy.Adam(lr=learning_rate)
-denoising_model.compile(optimizer=optimizer, loss='mse')
 
 # This sets the number of iterations through the training data
 epochs = 15
@@ -131,7 +130,7 @@ progress_ims = []
 
 AUTOTUNE = tf.data.AUTOTUNE
 
-def train(loss_function, model, augment_training=False):
+def train(augment_training=False):
 
     train_ds = (
         train_dataset
@@ -141,7 +140,8 @@ def train(loss_function, model, augment_training=False):
         train_dataset
        .prefetch(AUTOTUNE)
     )
-    model.compile(optimizer=optimizer, loss=loss_function)
+    model = build_model()
+    model.compile(optimizer=optimizer, loss='mse', metrics=[RootMeanSquaredError()])
 
     # As the training progresses, we'll monitor network output and performance
     # metrics. Some related variables are initialized here
@@ -174,7 +174,13 @@ for augment_training in [True, False]:
   denoising_model = build_model()
   denoising_model.compile(optimizer=optimizer, loss='mse')
   print(f'Running augmented training: {augment_training}')
-  denoising_model, progress_ims, progress_val = train(loss_function='mse', model=denoising_model, augment_training=augment_training)
+  denoising_model, progress_ims, progress_val = train(augment_training=augment_training)
+
+  print("Evaluate on test set")
+  result = denoising_model.evaluate(test_dataset)
+  print(dict(zip(denoising_model.metrics_names, result)))
 
   save_name = 'models/simple_cnn_denoiser_augmented' if augment_training else 'models/simple_cnn_denoiser'
   tf.keras.models.save_model(denoising_model, save_name)
+
+# %%

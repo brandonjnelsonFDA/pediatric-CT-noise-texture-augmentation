@@ -1,10 +1,9 @@
-experiment_name=adding_noise_to_labels_151mm_only
+experiment_name=112-292mm_adding_to_label
 base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
 # add notes written in LateX that will be added to the report and log
-notes='In the previous experiment I was adding 151mm noise to the *image*, rather than the *label* (what I said I was going to do). 
-So I corrected the file names to reflect this and am rerunning this experiment by adding noise to the label `image = label + noise_lambda[0]*noise_patch` [line 91] of `train_denoiser_with_augmentation.py`
-
-If this continues to have minimal effect I will explore increasing the magnitude of added noise, by increasing the likihood of adding noise (raising the threshold of add_noise line 89)'
+notes='I observed that by adding noise to the label I have most control over noise augmentation, frequency and magnitude are
+two immediate augmentation parameter that have appeared. I liked the look of the texture on the notebook, lets see how it
+looks under the full evaluation'
 LOG=results/results_log.md
 
 # Do not edit below
@@ -28,6 +27,8 @@ python train_denoiser_with_augmentation.py
 
 python process_CCT189.py $base_directory
 
+export LD_LIBRARY_PATH=
+# strange bug caused by Tensorflow need to clear this variable^, when I leave tensorflow for Pytorch and octave for python these shouldnt be issues anymore
 octave-cli measure_LCD_diameter_dependence.m $base_directory $results_file
 
 python task_assessments.py $results_file
@@ -36,8 +37,8 @@ python noise_assessments.py $base_directory -o $results_dir
 
 echo Now writing summary report...
 python make_summary.py $results_dir "$notes"
-duration=$SECONDS
-echo "experiment finished at $(date -u +%T\ %D), elapsed time $(($duration / 60)) minutes and $(($duration % 60)) seconds\n\n" >> $LOG
+
+echo "experiment finished at $(date -u +%T\ %D), elapsed time $(($SECONDS / 60)) minutes and $(($SECONDS % 60)) seconds\n\n" >> $LOG
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - >> $LOG
 printf "*\n\n*results saved to:** $results_dir\n" >> $LOG
 summary_file=$results_dir/summary.pdf
