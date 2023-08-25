@@ -138,7 +138,7 @@ batch_size = 32
 learning_rate = 0.0001
 # optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 optimizer = 'adam'
-optimizer = tf.keras.optimizers.legacy.Adam(lr=learning_rate)
+# optimizer = tf.keras.optimizers.legacy.Adam(lr=learning_rate)
 
 train_dataset = tf.data.Dataset.from_tensor_slices((train_input, train_target))
 val_dataset = tf.data.Dataset.from_tensor_slices((val_input, val_target))

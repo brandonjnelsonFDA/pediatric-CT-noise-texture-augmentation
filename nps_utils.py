@@ -51,21 +51,18 @@ def get_info(sa_file):
     return pd.DataFrame({'diameter [mm]': [diameter], 'dose [%]': [dose], 'recon': [recon], 'filename': [sa_file]})
 
 
-def make_delta_df(data, measure='Mean NPS'):
-    data = data.sort_values(by=['recon', 'diameter [mm]', 'dose [%]'])
-    delta_df = data[data.recon != 'fbp'].copy()
-    if 'Mean NPS' in delta_df.columns:
-        delta_df.pop('Mean NPS')
-    if 'std' in delta_df.columns:
-        delta_df.pop('std')
+def make_delta_df(noise_df, measurement='std', ref_recon='fbp'):
+    experiment_df = noise_df[noise_df.recon != ref_recon]
+    control_df = noise_df[noise_df.recon == ref_recon]
 
-    fbp_mean = data[data.recon == 'fbp'][measure]
-    mean_measure = data[data.recon != 'fbp'][measure]
-    nrecons = len(data[data.recon != 'fbp'].recon.unique())
-
-    delta_measure = [*fbp_mean]*nrecons -  mean_measure
-    delta_df[f'$\Delta$ {measure}'] = delta_measure
-    return delta_df
+    nrecons = len(experiment_df.recon.unique())
+    temp_control = pd.concat(nrecons*[control_df]).reset_index()
+    temp_experiment = experiment_df.reset_index()
+    col_name = f'$\Delta$ {measurement}'
+    unit = 'HU' if measurement == 'std' else '1/pix'
+    temp_experiment[f'{col_name} [{unit}]'] = temp_experiment[measurement] - temp_control[measurement]
+    temp_experiment[f'{col_name} [%]'] = 100*(temp_control[measurement] - temp_experiment[measurement]) / temp_control[measurement]
+    return temp_experiment
 
 
 def make_results_dict(summary, max_images=2000, verbose=True, diameters=None, doses=None, recons=None):
