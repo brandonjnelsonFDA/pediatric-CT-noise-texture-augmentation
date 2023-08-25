@@ -1,9 +1,13 @@
-experiment_name=112-292mm_adding_to_label
+experiment_name=112-292mm_adding_to_label_0.3thresh
 base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
 # add notes written in LateX that will be added to the report and log
-notes='I observed that by adding noise to the label I have most control over noise augmentation, frequency and magnitude are
-two immediate augmentation parameter that have appeared. I liked the look of the texture on the notebook, lets see how it
-looks under the full evaluation'
+notes='From experimenting I found a threshold of 0.3 matched the noise level in the low noise target image.
+This seems like good justifaction for the choise in value and the noise texture looks good in the notebook.
+
+There is some blurring compared to the target but its qualitatively better than base MSE, lets see how the 
+full evaluation turns out.
+
+This experiment is also using the built in keras model.fit rather than the manually written loop from before'
 LOG=results/results_log.md
 
 # Do not edit below

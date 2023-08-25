@@ -82,16 +82,36 @@ noise_patch_dict = {f.stem: np.load(f) for f in noise_files}
 noise_patches = np.concatenate(list(noise_patch_dict.values()))
 # noise_patches = np.zeros_like(noise_patches)
 # %%
+aug_thresh = 0.3
 def augment(image_label, seed, max_noise=1):
   image, label = image_label
   new_seed = tf.random.experimental.stateless_split(seed, num=1)[0, :]
   noise_patch = noise_patches[np.random.choice(list(range(len(noise_patches))))][:,:,None]
-  noise_lambda = tf.random.uniform([1], minval=0, maxval=max_noise)[0] #max noise controls magnitude of augmentation, higher means more
-  add_noise = tf.random.uniform([1], minval=0, maxval=1) > 0.4 #from 0.5 #controls frequency of augmentation, lower threshold means more
+  noise_lambda = tf.random.uniform([1], minval=0, maxval=max_noise)[0]
+  add_noise = tf.random.uniform([1], minval=0, maxval=1) > aug_thresh #from 0.5
 
   if add_noise:
     image = label + noise_lambda*noise_patch
   return image, label
+
+# %%
+example_input = test_input[[3], ...]
+edge_buffer = 128
+progress_ims = []
+progress_val = []
+
+class SaveSampleImageCallback(keras.callbacks.Callback):
+    def __init__(self, progress_ims, progress_val):
+          super().__init__()
+          self.progress_ims = progress_ims
+          self.progress_val = progress_val
+    def on_epoch_begin(self, epoch, logs=None):
+            val_loss = self.model.evaluate(val_input, val_target)
+            example_output = self.model.predict(example_input)
+            example_img = example_output[0, edge_buffer:-edge_buffer,
+                                         edge_buffer:-edge_buffer, 0]
+            self.progress_ims.append(example_img)
+            self.progress_val.append(val_loss)
 
 # %%
 batch_size = 32
@@ -104,29 +124,27 @@ test_dataset = tf.data.Dataset.from_tensor_slices((test_input, test_target))
 train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(batch_size)
 test_dataset = test_dataset.batch(batch_size)
 # %%
+from tensorflow.keras.metrics import RootMeanSquaredError
+
 rng = tf.random.Generator.from_seed(123, alg='philox')
 def f(x, y):
   seed = rng.make_seeds(2)[0]
   image, label = augment((x, y), seed)
   return image, label
 
+# This sets the number of iterations through the training data
+epochs = 15
+batch_size = 32
+learning_rate = 0.0001
+# optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+optimizer = 'adam'
+optimizer = tf.keras.optimizers.legacy.Adam(lr=learning_rate)
 
 train_dataset = tf.data.Dataset.from_tensor_slices((train_input, train_target))
 val_dataset = tf.data.Dataset.from_tensor_slices((val_input, val_target))
 test_dataset = tf.data.Dataset.from_tensor_slices((test_input, test_target))
 train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(batch_size)
 test_dataset = test_dataset.batch(batch_size)
-
-
-# This sets the number of iterations through the training data
-epochs = 15
-batch_size = 32
-learning_rate = 0.0001
-optimizer = tf.keras.optimizers.legacy.Adam(lr=learning_rate)
-
-progress_example = 2
-buffer = 128
-progress_ims = []
 
 AUTOTUNE = tf.data.AUTOTUNE
 
@@ -142,33 +160,16 @@ def train(augment_training=False):
     )
     model = build_model()
     model.compile(optimizer=optimizer, loss='mse', metrics=[RootMeanSquaredError()])
-
-    # As the training progresses, we'll monitor network output and performance
-    # metrics. Some related variables are initialized here
-    example_input = test_input[[3], ...]
-    edge_buffer = 128
     progress_ims = []
     progress_val = []
-
-    for epoch in range(epochs):
-      # Evaluate model on reserved data
-      val_loss = model.evaluate(val_input, val_target)
-      example_output = model.predict(example_input)
-      example_img = example_output[0, edge_buffer:-edge_buffer,
-                                edge_buffer:-edge_buffer, 0]
-      progress_ims.append(example_img)
-      progress_val.append(val_loss)
-      # Update model weights using training data
-      istart = 0
-      while istart < (len(train_input) - batch_size):
-        for x, y in train_ds.take(1):
-            model.train_on_batch(x=x, y=y)
-        istart += batch_size
+    callback = SaveSampleImageCallback(progress_ims, progress_val)
+    model.fit(train_ds, epochs = epochs, callbacks=[callback])
 
     progress_ims = np.stack(progress_ims, axis=0)
 
     print('Training phase complete.')
-    return model, progress_ims, progress_val
+    return model, np.stack(callback.progress_ims, axis=0), callback.progress_val
+
 
 for augment_training in [True, False]:
   denoising_model = build_model()
