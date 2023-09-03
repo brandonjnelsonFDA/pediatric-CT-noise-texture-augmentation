@@ -12,7 +12,7 @@ def main(results_dir, notes=None):
     doc = Document(geometry_options=geometry_options)
 
     doc.preamble.append(Command('title', 'Size-Based Noise Data Augmentation to Improve Generalizability of Deep Learning Denoising in Pediatric CT'))
-    doc.preamble.append(Command('author', 'Brandon J. Nelson'))
+    doc.preamble.append(Command('author', 'Brandon J. Nelson, Prabhat Kc, Andreu Badal, Lu Jiang, Rongping Zeng'))
     doc.preamble.append(Command('date', NoEscape(r'\today')))
     doc.append(NoEscape(r'\maketitle'))
 
@@ -46,30 +46,32 @@ In this work, noise texture patches are generated from simulated CT scans of pha
         with doc.create(Subsection('Making Noise Texture Patches')):
             doc.append(NoEscape(
 r'''
-Water cylinders of different sizes were numerically simulated and with CT projection data simulated using the Michigan Image Reconstruction Toolbox (MIRT). The acquisition parameters were modeled after the Siemens Sensation scanner with noise texture, sharpness, mA and kVp matching those used in the Mayo Clinic's Low Dose Grand Challenge Dataset (**cite**). CT images were then reconstructed from this projection data using fitting FOVs equal to 110\% the cylinder diameter shown in Figure \ref{fig:methods}a.\n
+Water cylinders of different sizes were numerically simulated and with CT projection data simulated using the Michigan Image Reconstruction Toolbox (MIRT). The acquisition parameters were modeled after the Siemens Sensation scanner with noise texture, sharpness, mA and kVp matching those used in the Mayo Clinic's Low Dose Grand Challenge Dataset.\cite{mccolloughLowdoseCTDetection2017} CT images were then reconstructed from this projection data using fitting FOVs equal to 110\% the cylinder diameter as shown in Figure \ref{fig:methods}a.\n
 '''))
 
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'methods.png'
                 fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
-                fig.add_caption('Creating noise patches of varying texture for data augmentation. (a) Water phantoms of varying diameters (112, 185, and 216 mm are shown) are virtually scanned, [mean, standard deviation] are shown for different 30x30 pixel patches from different regions of the image. Taking the difference of multiple repeat scans with different instances of projection Poisson noise yields the noise only images (b). (c) patches taken from different regions around the noise images show different noise orientations. Noise grain size also decreases with increasing phantom size. (d) 2D Noise power spectra illustrate different orientaions and spatial frequencies of noise between patches taken from diffent regions and phantom sizes.')
+                fig.add_caption('Creating noise patches of varying texture for data augmentation. (a) Water phantoms of varying diameters (112, 185, and 216 mm are shown) are virtually scanned, [mean, standard deviation] are shown for different 30x30 pixel patches from different regions of the image. Taking the difference of multiple repeat scans with different instances of projection Poisson noise yields the noise only images (b). (c) patches taken from different regions around the noise images show different noise orientations. Noise grain size also decreases with increasing phantom size. (d) 2D Noise power spectra illustrate different orientations and spatial frequencies of noise between patches taken from diffent regions and phantom sizes.')
                 fig.append(Label('fig:methods'))
 
             doc.append(NoEscape(r'''
-Noise only images from each size cylinder phantom image were then made by taking the dfference of all paired combinations (Figure \ref{fig:methods}b). Patches were then selected from random locations across these noise only images (\ref{fig:methods}c). The noise only images are split into patches since most denoising models are trained on image patches rather than whole image slices (**cite**). The matrix size these random patches is set to match the matrix size of the training set image patches. By selecting random locations, these noise patches contain different orientations of noise, shown by the different orientation of NPS images taken from the center, top and left of the noise images (Figure \ref{fig:images}d). The noise patches from different sized phantoms also contain noise of varying grain size as well. Noise patches from the smaller phantom scans have larger noise grain noise from the smaller FOV which are predominantly lower frequency, while the smaller noise grain patches from large FOV phantom scans are higher frequency (\ref{fig:methods}d).\n
+Noise only images from each size cylinder phantom image were then made by taking the dfference of all paired combinations (Figure \ref{fig:methods}b). Patches were then selected from random locations across these noise only images (\ref{fig:methods}c). The noise only images are split into patches since most denoising models are trained on image patches rather than whole image slices (**cite**). The matrix size of these random patches is set to match the matrix size of the training set image patches. By selecting random locations from the noise images, these noise patches contain different orientations of noise, shown by the different orientation of NPS images taken from the center, top and left of the noise images (Figure \ref{fig:images}d). The noise patches from different sized phantoms also contain noise of varying grain size as well. Noise patches from the smaller phantom scans have larger grain noise and thus their noise power spectra are predominantly lower frequency, while the smaller noise grain patches from large FOV phantom scans are higher frequency (\ref{fig:methods}d).\n'''))
 
-Compared to noise images from the training set, found by taking the difference between training inputs and training targets, these phantom simulated noise patches encompasss a wider range of noise spatial frequencies than encountered in the adult-only training set.\n
-'''))
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'trainingnoise.png'
-                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
-                fig.add_caption('methods')
+                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.8\linewidth'))
+                fig.add_caption('Comparison of noise textures found in training dataset compared to those to be added via data augmentation. (a) Example noise textures from taking the difference between training inputs and targets. (b) The averaged noise power spectra (NPS) across noise textures found in training. (c) Averged NPS across generated noise textures from each diameter phantom to be used for augmented training.')
                 fig.append(Label('fig:trainingnoise'))
+
+            doc.append(NoEscape(r'''
+Compared to noise images from the training set, found by taking the difference between training inputs and training targets, these phantom simulated noise patches encompasss a wider range of noise spatial frequencies than encountered in the adult-only training set, shown in Figure \ref{fig:trainingnoise}.\n
+'''))
 
         with doc.create(Subsection('Denoising Model Training with Augmentation')):
             doc.append(
 '''
-The goal of our propose size-based noise data augmentation is to incorporate this diversity of noise textures into the model training loop to improve the model generalizability to remove noise from a wider range of noise textures as would be seen in smaller patients and pediatric patients. This is illustrated in diagram X, where every X percent of training examples, the usual low dose input, high dose training pair is replaced with a new augmented training pair. The new input is the high dose input with an added random noise patch where the ta 
+The goal of our proposed size-based noise data augmentation is to incorporate this diversity of noise textures into the model training loop to improve the model generalizability to remove noise from a wider range of noise textures as would be seen in smaller patients and pediatric patients. This is illustrated in diagram X, where every X percent of training examples, the usual low dose input, high dose training pair is replaced with a new augmented training pair. The new input is the high dose input with an added random noise patch where the ta 
 ''')
 
         with doc.create(Subsection('Size Generalization Evaluations')):
