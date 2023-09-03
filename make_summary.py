@@ -24,38 +24,59 @@ def main(results_dir, notes=None):
 
     with doc.create(Section('Introducton')):
         doc.append(NoEscape(r'''
-Deep learning image reconstruction and denoising has been shown to be a viable option for reducing noise in CT imaging, enabling dose reductions on par with or potentially greater than the previous state of the art, model-based iterative reconstruction. In addition deep learning denoising, requires less computation at inference time and can better preserve noise texture relative to filtered backprojection (FBP), a feature generally favored by radiologists and know to affect low contrast detectability (**cite**).\n
+Deep learning image reconstruction and denoising have been shown to be a viable option for reducing noise in CT imaging, enabling dose reductions on par with or potentially greater than the previous state of the art model-based iterative reconstruction. In addition deep learning denoising, requires less computation at inference time and can better preserve noise texture relative to filtered backprojection (FBP), a feature generally favored by radiologists and known to affect low contrast detectability (**cite**).\n
         
-However, a key limitation of deep learning techniques, is their limited ability to generalize to data characteristically different from their training data. Prior studies have shown such deep learning CT denoising models are particularly sensitive to changes in noise texture of  the input image prior to denoising. These changes in noise texture can come from the input image being reconstructed with a different reconstruction kernel\cite{zengPerformanceDeepLearningbased2022} and reconstructed field of view (FOV).\cite{huberEvaluatingConvolutionalNeural2021} Such changes in noise texture are common when imaging different size patients, particularly in abdominal imaging, where FOV is routinely adapted to fit the patient. This effect was recently shown to have substantial influence when considering using deep learning denoising models trained on adult patiets but applied to pediatric patients. Given that pediatric patients can be considerably smaller than adult patient, it was shown that the smaller associated FOV results in reduction in denoising performance that progressively worsened as patient size and FOV decreased relative to the training distribution.\cite{nelsonPediatricSpecificEvaluationsDeep2023}\n
+However, a key limitation of deep learning techniques, is their limited ability to generalize to data characteristically different from their training data. Prior studies have shown such deep learning CT denoising models are particularly sensitive to changes in noise texture of  the input image prior to denoising. These changes in noise texture can come from input images being reconstructed with different reconstruction kernels\cite{zengPerformanceDeepLearningbased2022} and reconstructed fields of view (FOV).\cite{huberEvaluatingConvolutionalNeural2021} Such changes in noise texture are common when imaging pediatric patients which can be particularly smaller than adults, particularly in abdominal imaging, where FOV is routinely adapted to fit the patient. This effect has recently been shown to have substantial influence when considering using deep learning denoising models trained on adult patients but applied to pediatric patients. Given that pediatric patients can be considerably smaller than adult patient, it was shown that the smaller associated FOV results in reduction in denoising performance that progressively worsened as patient size and FOV decreased relative to the training distribution.\cite{nelsonPediatricSpecificEvaluationsDeep2023}\n
         
-This demonstration that adult-trained deep learning models do not generalize to pediatric patient raises health equity concerns as it could limit access for pediatric patients to the latest and greatest medical advancements made available with deep learning. Pediatric patients are under represented in radiological imaging, making up only 5\% of scans despite representing 20\% of the US population. As a result deep learning models are generally not trained with pediatric data. The goal of this work is to leverage data augmentation, a deep learning model training technique for enhancing limited training datasets, as a means to improve deep learning CT denoising to patients of sizes outside of the training distribution. This is done by extracting noise textures extracted from scans of phantoms representative of pediatric sizes and FOVs to augment the adult traininging data. The result is denoising model that generalizes better to smaller patients, saving time, resources, and radiation exposure compared to compiling large datasets with these patients, which is generally not feasible.
+This demonstration that adult-trained deep learning models do not generalize to pediatric patient raises health equity concerns as it could limit access for pediatric patients to the latest and greatest medical advancements made available with deep learning. Pediatric patients are under represented in radiological imaging, making up only 5\% of scans despite representing 20\% of the US population.\cite{smith-bindmanTrendsUseMedical2019} As a result deep learning models are generally not trained with pediatric data. The goal of this work is to leverage data augmentation, a deep learning model training technique for enhancing limited training datasets, as a means to improve deep learning CT denoising to patients of sizes outside their training distribution. This is done by extracting noise textures extracted from scans of phantoms representative of pediatric sizes and FOVs to augment the adult traininging data. The result is a denoising model that generalizes better to smaller patients, saving time, resources, and radiation exposure compared to compiling large datasets with these patients, which is generally not feasible.
 '''))
 
     with doc.create(Section('Methods')):
+        doc.append(
+'''
+In this work, noise texture patches are generated from simulated CT scans of phantoms representative of different pediatric waist diameters ranging from newborn to adolescent using body fitting FOVs. These patches are then used to augment the training of a deep learning denoising model using a training dataset consisting of adult patient data. The magnitude of noise reduction, noise texture preservation, image sharpness, and low contrast detectability using model observers were all used to assess whether the  proposed augmentation technique improved generalizability in smaller patients.
 
-        with doc.create(Subsection('Noise Texture Augmentation')):
+''')
+        with doc.create(Figure(position='h!')) as fig:
+                image_filename = results_dir/'schematic.png'
+                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
+                fig.add_caption('Schematic diagram of proposed data augmentation')
+                fig.append(Label('fig:schematic'))
+
+        with doc.create(Subsection('Making Noise Texture Patches')):
             doc.append(NoEscape(
 r'''
-Water cylinders of different sizes were numerically simulated and with CT projection data simulated using the Michigan Image Reconstruction Toolbox (MIRT). The acquisition parameters were modeled after the Siemens Sensation scanner with noise texture, sharpness, mA and kVp matching those used in the Mayo Clinic's Low Dose Grand Challenge Dataset (**cite**). CT images were then reconstructed from this projection data using fitting FOVs equal to 110\% the cylinder diameter shown in Figure \ref{fig:images}a (Make a methods version of this figure showing just FBP (part a), the noise difference images (part b), and noise patches (part c) and NPS profiles (part c)).\n
+Water cylinders of different sizes were numerically simulated and with CT projection data simulated using the Michigan Image Reconstruction Toolbox (MIRT). The acquisition parameters were modeled after the Siemens Sensation scanner with noise texture, sharpness, mA and kVp matching those used in the Mayo Clinic's Low Dose Grand Challenge Dataset (**cite**). CT images were then reconstructed from this projection data using fitting FOVs equal to 110\% the cylinder diameter shown in Figure \ref{fig:methods}a.\n
 '''))
 
             with doc.create(Figure(position='h!')) as fig:
-                image_filename = results_dir/'images.png'
-                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
-                fig.add_caption('Water cylinders of different sizes scanned with fitting FOVs and reconstructed with different methods.')
-                fig.append(Label('fig:images'))
+                image_filename = results_dir/'methods.png'
+                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
+                fig.add_caption('Creating noise patches of varying texture for data augmentation. (a) Water phantoms of varying diameters (112, 185, and 216 mm are shown) are virtually scanned, [mean, standard deviation] are shown for different 30x30 pixel patches from different regions of the image. Taking the difference of multiple repeat scans with different instances of projection Poisson noise yields the noise only images (b). (c) patches taken from different regions around the noise images show different noise orientations. Noise grain size also decreases with increasing phantom size. (d) 2D Noise power spectra illustrate different orientaions and spatial frequencies of noise between patches taken from diffent regions and phantom sizes.')
+                fig.append(Label('fig:methods'))
 
-            with doc.create(Figure(position='h!')) as fig:
-                image_filename = results_dir/'noise_images.png'
-                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
-                fig.add_caption('Sample noise images made from repeat scans of water phantoms of a given diameter')
-                fig.append(Label('fig:noiseimages'))
             doc.append(NoEscape(r'''
-Noise only images from each size cylinder phantom image were then made by taking the dfference of all paired combinations (\ref{fig:images}b). Patches were then selected from random locations across these noise only images (\ref{fig:images}c). The noise only images are split into patches since most denoising models are trained on image patches rather than whole image slices (**cite**). The matrix size these random patches is set to match the matrix size of the training set image patches. By selecting random locations, these noise patches contain different orientations of noise, and noise patches from different sized phantoms contain noise of varying grain size ((\ref{fig:images}d) just the random image patches from different corners). This noise grain size can be quantified by the noise power spectra (NPS) where the larger noise grain from the smaller FOV phantom scans are predominantly lower frequency, while the smaller noise grain patches from large FOV phantom scans are higher frequency (\ref{fig:npsimages}a). Compared to noise images from the training set, found by taking the difference between training inputs and training targets, these phantom simulated noise patches encompasss a wider range of noise spatial frequencies than encountered in the adult-only training set.\n
+Noise only images from each size cylinder phantom image were then made by taking the dfference of all paired combinations (Figure \ref{fig:methods}b). Patches were then selected from random locations across these noise only images (\ref{fig:methods}c). The noise only images are split into patches since most denoising models are trained on image patches rather than whole image slices (**cite**). The matrix size these random patches is set to match the matrix size of the training set image patches. By selecting random locations, these noise patches contain different orientations of noise, shown by the different orientation of NPS images taken from the center, top and left of the noise images (Figure \ref{fig:images}d). The noise patches from different sized phantoms also contain noise of varying grain size as well. Noise patches from the smaller phantom scans have larger noise grain noise from the smaller FOV which are predominantly lower frequency, while the smaller noise grain patches from large FOV phantom scans are higher frequency (\ref{fig:methods}d).\n
 
+Compared to noise images from the training set, found by taking the difference between training inputs and training targets, these phantom simulated noise patches encompasss a wider range of noise spatial frequencies than encountered in the adult-only training set.\n
+'''))
+            with doc.create(Figure(position='h!')) as fig:
+                image_filename = results_dir/'trainingnoise.png'
+                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
+                fig.add_caption('methods')
+                fig.append(Label('fig:trainingnoise'))
+
+        with doc.create(Subsection('Denoising Model Training with Augmentation')):
+            doc.append(
+'''
 The goal of our propose size-based noise data augmentation is to incorporate this diversity of noise textures into the model training loop to improve the model generalizability to remove noise from a wider range of noise textures as would be seen in smaller patients and pediatric patients. This is illustrated in diagram X, where every X percent of training examples, the usual low dose input, high dose training pair is replaced with a new augmented training pair. The new input is the high dose input with an added random noise patch where the ta 
-            '''))
-            doc.append(NoEscape(r"Repeat water scans from (Figure \ref{fig:images}) were subtracting in different combinations yielding 2000 noise images per setting yielding the noise images in (Figure \ref{fig:noiseimages})"))
+''')
+
+        with doc.create(Subsection('Size Generalization Evaluations')):
+            doc.append(NoEscape(
+r'''
+To assess whether the data augmentation was able to enhance the generalizability model to different sized phantoms, evautions of noise reduction, sharpness, noise texture, and low contrast detectability were performed.\n
+'''))
     
     with doc.create(Section('Results')):
 
