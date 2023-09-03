@@ -13,7 +13,7 @@ from nps_utils import make_delta_df, make_results_dict, get_summary,\
 sns.set_theme()
 
 
-def plot_images(results_dict, results_dir, diameters=[112, 151, 216, 350]):
+def plot_images(results_dict, results_dir=None, diameters=[112, 151, 216, 350]):
     recons = results_dict[112][100].keys()
     def normalize(x, recon):
         if recon == 'fbp':
@@ -209,3 +209,68 @@ if __name__ == '__main__':
     results_dir = args.output_directory or results_dir
 
     main(datadir=Path(datadir), results_dir=Path(results_dir))
+
+# %%
+def get_square_patch(img, center, patch_width=30):
+    if img.ndim == 2: img = img[None, :, :]
+    return img[:, center[0]-patch_width//2:center[0]+patch_width//2, center[1]-patch_width//2:center[1]+patch_width//2]
+# %%
+def get_patches(img, centers, patch_size=30):
+    return {center: get_square_patch(img, center, patch_width=patch_size) for center in centers}
+# %%
+results_dict, summary = load_data(datadir, results_dir)
+# %%
+patches = get_patches(results_dict[112][100]['fbp']['image'], [(110, 110)])
+plt.imshow(list(patches.values())[0][0])
+# %%
+diams = [112, 151, 216, 350]
+f, axs = plt.subplots(1, 1, figsize=(6,1.5), dpi=300)
+images = np.concatenate([results_dict[d][100]['fbp']['image']-1000 for d in diams], axis=1)
+coords = [(256, 256), (50, 256), (110, 110)]
+image_patches = [get_patches(results_dict[d][100]['fbp']['image']-1000, centers=coords) for d in diams]
+
+image_stds = [{k: (img.mean(), img.std()) for k, img in p.items()} for p in image_patches]
+ww = 40
+wl = 0
+N=1
+axs.imshow(images, cmap='gray', vmin=wl-ww//2, vmax=wl+ww//2)
+axs.axis('off')
+axs.set_title('images')
+
+for idx, p in enumerate(image_stds):
+    for xy, (mean, std) in p.items():
+        axs.annotate(f'[{mean:2.1f}, {std:2.1f}] HU', (xy[0] + idx*512, xy[1]), fontsize=4, bbox=dict(fc="lightblue", ec="steelblue"))
+# %%
+diams = [112, 151, 216, 350]
+f, axs = plt.subplots(1, 1, figsize=(6,1.5), dpi=300)
+images = np.concatenate([results_dict[d][100]['fbp']['noise image'] for d in diams], axis=1)
+image_patches = [get_patches(results_dict[d][100]['fbp']['noise image'], centers=coords) for d in diams]
+
+image_stds = [{k: (img.mean(), img.std()) for k, img in p.items()} for p in image_patches]
+ww2 = np.sqrt(2*ww**2)
+N=1
+axs.imshow(images, cmap='gray', vmin=wl-ww2//2, vmax=wl+ww2//2)
+axs.axis('off')
+axs.set_title('noise images')
+
+for idx, p in enumerate(image_stds):
+    for xy, (mean, std) in p.items():
+        axs.annotate(f'[{mean:2.1f}, {std:2.1f}] HU', (xy[0] + idx*512, xy[1]), fontsize=4, bbox=dict(fc="lightblue", ec="steelblue"))
+# %%
+patches = [get_corner_patches(results_dict[d][100]['fbp']['noise image']) for d in diams]
+
+images = np.concatenate([np.concatenate([patches[idx][c][0] for idx, d in enumerate(diams)], axis=1) for c in patches[0].keys()], axis=0)
+mean = images.mean()
+std = images.std()
+N=1
+
+axs[2].imshow(images, cmap='gray', vmin=mean-N*std, vmax=mean+N*std)
+axs[2].axis('off')
+axs[2].set_title('patches')
+
+images = np.concatenate([np.concatenate([patches[idx][c][0] for idx, d in enumerate(diams)], axis=1) for c in patches[0].keys()], axis=0)
+# see make_noise_patches.ipynb for this one
+axs[3].set_title('patch nps')
+
+print('rather than subplots, consider saving out as equal sized images and having latex make the subplots')
+# %%
