@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import pydot
 
 from nps_utils import compute_nps
 from noise_assessments import load_data
@@ -44,7 +45,7 @@ def plot_methods(datadir, results_dir=None):
     ax = fig.add_subplot(gs[0, :])
     ax.imshow(images, cmap='gray', vmin=wl-ww//2, vmax=wl+ww//2)
     ax.axis('off')
-    ax.set_title(f'(a) {diams} mm images', fontsize=fontsize)
+    ax.set_title(f'(a) {diams} mm Images', fontsize=fontsize)
 
     for idx, p in enumerate(image_stds):
         for xy, (mean, std) in p.items():
@@ -59,7 +60,7 @@ def plot_methods(datadir, results_dir=None):
     ax = fig.add_subplot(gs[1, :])
     ax.imshow(images, cmap='gray', vmin=wl-ww2//2, vmax=wl+ww2//2)
     ax.axis('off')
-    ax.set_title(f'(b) {diams} mm noise images', fontsize=fontsize)
+    ax.set_title(f'(b) {diams} mm Noise Images', fontsize=fontsize)
 
     for idx, p in enumerate(image_stds):
         for xy, (mean, std) in p.items():
@@ -103,41 +104,120 @@ def plot_training_noise_comparison(results_dir=None):
     noise_patch_dict = prep_patches(datadir)
     training_noise = train_input - train_target
     train_nps = compute_nps(training_noise)
-    f, axs = plt.subplots(1,3, figsize=(7.5, 3), dpi=300, tight_layout=True)
+
+    patches_to_keep_idx = np.squeeze(train_target.mean(axis=(1,2)) > 0)
+    train_input = train_input[patches_to_keep_idx]
+    train_target = train_target[patches_to_keep_idx]
+    training_noise = train_input - train_target
+
+
+    f, axs = plt.subplots(2, 2, figsize=(4.5, 5), dpi=300, tight_layout=True)
+    axs = axs.flatten()
+
     axs[0].imshow(np.concatenate(
-        [np.concatenate(np.squeeze(training_noise[3*idx:3+3*idx]), axis=0)
+        [np.concatenate(np.squeeze(train_input[3*idx:3+3*idx]), axis=0)
         for idx in range(3)], axis=1), cmap='gray')
     axs[0].axis('off')
     axs[0].set_title(
     '''(a) Example Training
-    Noise Textures''')
+    Inputs''')
 
-    axs[1].imshow(train_nps)
+    axs[1].imshow(np.concatenate(
+        [np.concatenate(np.squeeze(training_noise[3*idx:3+3*idx]), axis=0)
+        for idx in range(3)], axis=1), cmap='gray')
     axs[1].axis('off')
     axs[1].set_title(
-    '''(b) Training Noise Textures
-    Average NPS''')
+    '''(b) Example Training
+    Noise Textures''')
+
+    axs[2].imshow(train_nps)
+    axs[2].axis('off')
+    axs[2].set_title(
+'''(c) Training Noise
+Textures Average NPS''')
 
     normalize = lambda x: x/x.sum()
     patch_nps = [normalize(compute_nps(noise_patch_dict[f'diameter{x}mm'])) for x in diams]
-    axs[2].imshow(np.concatenate(
+    axs[3].imshow(np.concatenate(
         [np.concatenate(np.squeeze(patch_nps[2*idx:2+2*idx]), axis=0)
         for idx in range(2)], axis=1))
     idx=0
     for i in range(2):
         for j in range(2):
-            axs[2].annotate(f'{diams[idx]} mm', (4+30*i, 4+30*j), color='white')
+            axs[3].annotate(f'{diams[idx]} mm', (4+30*i, 4+30*j), color='white')
             idx+=1
-    axs[2].set_title(
-    '''(c) Generated Noise Textures
-    Average NPS''')
-    axs[2].axis('off')
+    axs[3].set_title(
+'''(d) Generated Noise
+Textures Average NPS''')
+    axs[3].axis('off')
     if results_dir is None: return
     f.savefig(Path(results_dir) /'trainingnoise.png', dpi=600, bbox_inches='tight')
+
+
+def make_schematic(results_dir):
+
+    dot_string = """digraph {
+        fontname="Helvetica,Arial,sans-serif"
+        node [fontname="Helvetica,Arial,sans-serif"]
+        edge [fontname="Helvetica,Arial,sans-serif"]
+        layout=dot
+        node [shape=box]; {node [label="Training Input"] input};
+        node [shape=box]; {node [label="Training Target"] target};
+        node [shape=box]; Prediction;
+        
+        node [shape=ellipse]; Model;
+        node [shape=diamond,style=filled,color=lightgrey]; {node [label="Loss Function"] loss};
+
+        input -> Model [len=2.00];
+        
+        Model -> Prediction [len=2.00];
+        Prediction -> loss [len=2.00];
+        
+        target -> loss [len=2.00];
+        loss -> Model [len=2.00];
+
+        fontsize=20;
+    }"""
+
+    graphs = pydot.graph_from_dot_data(dot_string)
+    graphs[0].write_png(Path(results_dir) / 'standard_training_schematic.png')
+
+    dot_string = """digraph {
+        fontname="Helvetica,Arial,sans-serif"
+        node [fontname="Helvetica,Arial,sans-serif"]
+        edge [fontname="Helvetica,Arial,sans-serif"]
+        layout=dot
+        node [shape=box]; {node [label="Training Input"] input};
+        node [shape=box]; {node [label="Training Target"] target};
+        node [shape=box]; Prediction;
+        node [shape=box]; {node [label="Noise Patches"] patches};
+        node [shape=box]; {node [label="Augmented Input"] augmented};
+
+        node [shape=ellipse]; Model;
+        node [shape=diamond,style=filled,color=lightgrey]; {node [label="Loss Function"] loss};
+
+        patches -> augmented;
+        target ->  augmented [len=2.00];
+
+        input -> Model;
+        augmented -> Model
+        
+        Model -> Prediction [len=2.00];
+        Prediction -> loss [len=2.00];
+        target -> loss [len=2.00];
+        loss -> Model [len=2.00];
+
+        fontsize=20;
+    }
+
+    """
+    graphs = pydot.graph_from_dot_data(dot_string)
+    graphs[0].write_png(Path(results_dir) / 'augmented_training_schematic.png')
 
 def main(datadir, results_dir):
     plot_methods(datadir=Path(datadir), results_dir=Path(results_dir))
     plot_training_noise_comparison(results_dir)
+    make_schematic(results_dir)
 # %%
 if __name__ == '__main__':
 
@@ -151,3 +231,5 @@ if __name__ == '__main__':
     results_dir = args.output_directory or results_dir
 
     main(datadir, results_dir)
+# %%
+
