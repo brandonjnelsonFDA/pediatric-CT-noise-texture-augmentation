@@ -40,6 +40,7 @@ def radial_profile(data, center=None):
 
 
 def get_mean_nps(profile, freq=None):
+    profile = np.copy(profile)
     profile /= profile.sum()
     freq = freq or list(range(len(profile)))
     return np.sum(np.dot(freq,profile))

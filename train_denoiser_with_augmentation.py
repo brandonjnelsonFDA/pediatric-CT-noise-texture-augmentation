@@ -23,8 +23,8 @@ train_input = np.load('data/Denoising_Data/train_input.npy')
 train_target = np.load('data/Denoising_Data/train_target.npy')
 # load validation data, used to monitor for overfitting
 # 1000 30x30 image patches from 1 patient
-val_input = np.load('data/Denoising_Data/val_input.npy')
-val_target = np.load('data/Denoising_Data/val_target.npy')
+# val_input = np.load('data/Denoising_Data/val_input.npy')
+# val_target = np.load('data/Denoising_Data/val_target.npy')
 
 # load testing data, used for evaluating performance
 # 5 512x512 images from 1 patient
@@ -118,13 +118,18 @@ batch_size = 32
 SHUFFLE_BUFFER_SIZE = 100
 # %%
 train_dataset = tf.data.Dataset.from_tensor_slices((train_input, train_target))
+
+val_input = noise_patch_dict['diameter131mm'][:1000,:,:,None]
+val_target = np.zeros_like(val_input)
 val_dataset = tf.data.Dataset.from_tensor_slices((val_input, val_target))
+
 test_dataset = tf.data.Dataset.from_tensor_slices((test_input, test_target))
 # %%
 train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(batch_size)
 test_dataset = test_dataset.batch(batch_size)
 # %%
 from tensorflow.keras.metrics import RootMeanSquaredError
+import datetime
 
 rng = tf.random.Generator.from_seed(123, alg='philox')
 def f(x, y):
@@ -147,41 +152,54 @@ train_dataset = train_dataset.shuffle(SHUFFLE_BUFFER_SIZE).batch(batch_size)
 test_dataset = test_dataset.batch(batch_size)
 
 AUTOTUNE = tf.data.AUTOTUNE
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-def train(augment_training=False):
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    train_ds = (
-        train_dataset
-        .map(f, num_parallel_calls=AUTOTUNE)
-        .prefetch(AUTOTUNE)
-    ) if augment_training else (
-        train_dataset
-       .prefetch(AUTOTUNE)
-    )
+def train(augment_training=False, model=None, epochs=15):
+  'providing `model` as an argument skips model building and compiling and allows fine-tuning with a pretrained model'
+  train_ds = (
+      train_dataset
+      .map(f, num_parallel_calls=AUTOTUNE)
+      .prefetch(AUTOTUNE)
+  ) if augment_training else (
+      train_dataset
+      .prefetch(AUTOTUNE)
+  )
+  if model is None:
     model = build_model()
     model.compile(optimizer=optimizer, loss='mse', metrics=[RootMeanSquaredError()])
-    progress_ims = []
-    progress_val = []
-    callback = SaveSampleImageCallback(progress_ims, progress_val)
-    model.fit(train_ds, epochs = epochs, callbacks=[callback])
+  progress_ims = []
+  progress_val = []
+  callback = SaveSampleImageCallback(progress_ims, progress_val)
+  model.fit(train_ds, epochs = epochs, callbacks=[callback, tensorboard_callback], validation_data=val_dataset)
 
-    progress_ims = np.stack(progress_ims, axis=0)
+  progress_ims = np.stack(progress_ims, axis=0)
 
-    print('Training phase complete.')
-    return model, np.stack(callback.progress_ims, axis=0), callback.progress_val
+  print('Training phase complete.')
+  return model, np.stack(callback.progress_ims, axis=0), callback.progress_val
 
+augment_training = False
+print(f'Running augmented training: {augment_training}')
+denoising_model, progress_ims, progress_val = train(augment_training=augment_training)
 
-for augment_training in [True, False]:
-  denoising_model = build_model()
-  denoising_model.compile(optimizer=optimizer, loss='mse')
-  print(f'Running augmented training: {augment_training}')
-  denoising_model, progress_ims, progress_val = train(augment_training=augment_training)
+print("Evaluate on test set")
+result = denoising_model.evaluate(test_dataset)
+print(dict(zip(denoising_model.metrics_names, result)))
 
-  print("Evaluate on test set")
-  result = denoising_model.evaluate(test_dataset)
-  print(dict(zip(denoising_model.metrics_names, result)))
+save_name = 'models/simple_cnn_denoiser'
+tf.keras.models.save_model(denoising_model, save_name)
 
-  save_name = 'models/simple_cnn_denoiser_augmented' if augment_training else 'models/simple_cnn_denoiser'
-  tf.keras.models.save_model(denoising_model, save_name)
+# now fine tune on pretrained model
+augment_training = True
+print(f'Running augmented training: {augment_training}')
+denoising_model, progress_ims, progress_val = train(augment_training=augment_training, model=denoising_model, epochs=15)
+
+print("Evaluate on test set")
+result = denoising_model.evaluate(test_dataset)
+print(dict(zip(denoising_model.metrics_names, result)))
+
+save_name = 'models/simple_cnn_denoiser_augmented'
+tf.keras.models.save_model(denoising_model, save_name)
 
 # %%

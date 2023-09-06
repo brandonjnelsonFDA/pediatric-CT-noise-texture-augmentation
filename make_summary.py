@@ -11,7 +11,7 @@ def main(results_dir, notes=None):
     geometry_options = {"tmargin":"1in", "bmargin":"1in", "lmargin":"1in", "rmargin":"1in"}
     doc = Document(geometry_options=geometry_options)
 
-    doc.preamble.append(Command('title', 'Size-Based Noise Data Augmentation to Improve Generalizability of Deep Learning Denoising in Pediatric CT'))
+    doc.preamble.append(Command('title', 'Noise Texture Augmentation to Improve Generalizability of Deep Learning Denoising in Pediatric CT'))
     doc.preamble.append(Command('author', 'Brandon J. Nelson, Prabhat Kc, Andreu Badal, Lu Jiang, Rongping Zeng'))
     doc.preamble.append(Command('date', NoEscape(r'\today')))
     doc.append(NoEscape(r'\maketitle'))

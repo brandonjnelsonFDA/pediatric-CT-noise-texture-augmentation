@@ -209,13 +209,3 @@ if __name__ == '__main__':
     results_dir = args.output_directory or results_dir
 
     main(datadir=Path(datadir), results_dir=Path(results_dir))
-
-def get_square_patch(img, center, patch_width=30):
-    if img.ndim == 2: img = img[None, :, :]
-    return img[:, center[0]-patch_width//2:center[0]+patch_width//2, center[1]-patch_width//2:center[1]+patch_width//2]
-
-def get_patches(img, centers, patch_size=30):
-    return {center: get_square_patch(img, center, patch_width=patch_size) for center in centers}
-
-
-# %%

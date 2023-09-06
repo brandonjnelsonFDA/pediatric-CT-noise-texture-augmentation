@@ -8,3 +8,4 @@ LCD_CT*
 noise_patches
 *.pyc
 results
+logs

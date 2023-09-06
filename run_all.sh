@@ -1,13 +1,8 @@
-experiment_name=112-292mm_adding_to_label_0.3thresh
+experiment_name=pretrained_finetune
 base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
 # add notes written in LateX that will be added to the report and log
-notes='From experimenting I found a threshold of 0.3 matched the noise level in the low noise target image.
-This seems like good justifaction for the choise in value and the noise texture looks good in the notebook.
+notes='Adding the 131mm noise patches as a validation dataset showed that a 15 epoch fine tuning with data augmentation following normal MSE training had best validation score'
 
-There is some blurring compared to the target but its qualitatively better than base MSE, lets see how the 
-full evaluation turns out.
-
-This experiment is also using the built in keras model.fit rather than the manually written loop from before'
 LOG=results/results_log.md
 
 # Do not edit below
@@ -43,6 +38,7 @@ python noise_assessments.py $base_directory -o $results_dir
 python methods_figures.py $base_directory -o $results_dir
 
 echo Now writing summary report...
+cp -v references.bib $results_dir
 python make_summary.py $results_dir "$notes"
 
 echo "experiment finished at $(date -u +%T\ %D), elapsed time $(($SECONDS / 60)) minutes and $(($SECONDS % 60)) seconds\n\n" >> $LOG
