@@ -26,31 +26,33 @@ def main(results_dir, notes=None):
         doc.append(NoEscape(r'''
 Deep learning image reconstruction and denoising have been shown to be a viable option for reducing noise in CT imaging, enabling dose reductions on par with or potentially greater than the previous state of the art model-based iterative reconstruction. In addition deep learning denoising, requires less computation at inference time and can better preserve noise texture relative to filtered backprojection (FBP), a feature generally favored by radiologists and known to affect low contrast detectability (**cite**).\n
         
-However, a key limitation of deep learning techniques, is their limited ability to generalize to data characteristically different from their training data. Prior studies have shown such deep learning CT denoising models are particularly sensitive to changes in noise texture of  the input image prior to denoising. These changes in noise texture can come from input images being reconstructed with different reconstruction kernels\cite{zengPerformanceDeepLearningbased2022} and reconstructed fields of view (FOV).\cite{huberEvaluatingConvolutionalNeural2021} Such changes in noise texture are common when imaging pediatric patients which can be particularly smaller than adults, particularly in abdominal imaging, where FOV is routinely adapted to fit the patient. This effect has recently been shown to have substantial influence when considering using deep learning denoising models trained on adult patients but applied to pediatric patients. Given that pediatric patients can be considerably smaller than adult patient, it was shown that the smaller associated FOV results in reduction in denoising performance that progressively worsened as patient size and FOV decreased relative to the training distribution.\cite{nelsonPediatricSpecificEvaluationsDeep2023}\n
-        
-This demonstration that adult-trained deep learning models do not generalize to pediatric patient raises health equity concerns as it could limit access for pediatric patients to the latest and greatest medical advancements made available with deep learning. Pediatric patients are under represented in radiological imaging, making up only 5\% of scans despite representing 20\% of the US population.\cite{smith-bindmanTrendsUseMedical2019} As a result deep learning models are generally not trained with pediatric data. The goal of this work is to leverage data augmentation, a deep learning model training technique for enhancing limited training datasets, as a means to improve deep learning CT denoising to patients of sizes outside their training distribution. This is done by extracting noise textures extracted from scans of phantoms representative of pediatric sizes and FOVs to augment the adult traininging data. The result is a denoising model that generalizes better to smaller patients, saving time, resources, and radiation exposure compared to compiling large datasets with these patients, which is generally not feasible.
+However, a key limitation of deep learning techniques, is their limited ability to generalize to data characteristically different than they were trained with. Prior studies have shown deep learning CT denoising models are particularly sensitive to changes in noise texture of the input image due to differences in reconstruction kernels\cite{zengPerformanceDeepLearningbased2022} and reconstructed fields of view (FOV).\cite{huberEvaluatingConvolutionalNeural2021} Such changes in noise texture are common when imaging pediatric patients which can be substantially smaller than adults, particularly in abdominal imaging, where the FOV is routinely adapted to fit the patient. This effect has recently been shown to reduce performance of adult-trained deep learning denoising models applied to pediatric patients.\cite{nelsonPediatricSpecificEvaluationsDeep2023} 
+
+This poor performance raises health equity concerns as it could limit access for pediatric patients to the latest deep learning enabled medical advancements. Pediatric patients are under represented in radiological imaging, making up only 5\% of scans despite representing 20\% of the US population,\cite{smith-bindmanTrendsUseMedical2019} thus large pediatric datasets are not availble to develop deep learning models for pediatric patients. 
+
+The goal of this work is to leverage data augmentation, a deep learning model training technique for enhancing limited training datasets, as a means to improve deep learning CT denoising to patients of sizes outside their training distribution. This is done by extracting noise textures extracted from scans of phantoms representative of pediatric sizes and FOVs to augment the adult traininging data. The result is a denoising model that generalizes better to smaller patients, saving time, resources, and radiation exposure compared to compiling large datasets with these patients, which is generally not feasible.
 '''))
 
     with doc.create(Section('Methods')):
-        doc.append(
-'''
-In this work, noise texture patches are generated from simulated CT scans of phantoms representative of different pediatric waist diameters ranging from newborn to adolescent using body fitting FOVs. These patches are then used to augment the training of a deep learning denoising model using a training dataset consisting of adult patient data. The magnitude of noise reduction, noise texture preservation, image sharpness, and low contrast detectability using model observers were all used to assess whether the  proposed augmentation technique improved generalizability in smaller patients.
+        doc.append(NoEscape(r'''
+Figure \ref{fig:schematic} compares traditional model training (Figure \ref{fig:schematic}a) with our proposed noise trexture augmented model training Figure \ref{fig:schematic}b. Traditional deep learning denoising models are trained using low dose training inputs and high dose training targets where the model processes the noisy input, attempting to remove noise in its prediction. This prediction is compared to the high dose training target using the loss function and the model is then updated to minimize this loss function and the process repeats. As these training inputs and targets generally are from adult CT image datasets, this approach works well in adults of similar size as in the training, but have been shown to perform worse in pediatric patients who are smaller than the adults in the training set.\cite{nelsonPediatricSpecificEvaluationsDeep2023} In our proposed noise texture augmented training Figure \ref{fig:schematic}b noise patches are generated from simulated CT scans of phantoms representative of different pediatric waist diameters ranging from newborn to adolescent using body fitting FOVs. These patches have distinct noise textures and are combined with the high dose training target images to make a new augmented input estimating a low dose image from a smaller FOV pediatric patient. These augmented inputs are used together the original low dose training inputs making up a proportion $\lambda$ of the total training data. This proportion $\lambda$, which controls the magnitude of augmentation along with the characteristics of the generated noise patches all contribute to the augmented training model performance. 
 
-''')
+To assess whether the proposed augmentation technique (Figure \ref{fig:schematic}b) improved generalizability in smaller patients compared to the traditionally trained model (Figure \ref{fig:schematic}a), performance was assessed as the magnitude of noise reduction, noise texture preservation, image sharpness, and low contrast detectability using model observers.
+'''))
         with doc.create(Figure(position='h!')) as fig:
             with doc.create(SubFigure(
                                 position='b',
                                 width=NoEscape(r'0.4\linewidth'))) as subfig:
                 image_filename = results_dir/'standard_training_schematic.png'
                 subfig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.9\linewidth'))
-                subfig.add_caption('Standard Model Training')
+                subfig.add_caption('Traditional Model Training')
             with doc.create(SubFigure(
                                 position='b',
                                 width=NoEscape(r'0.5\linewidth'))) as subfig:
                 image_filename = results_dir/'augmented_training_schematic.png'
                 subfig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
-                subfig.add_caption('Augmented Model Training')
-            fig.add_caption('Schematic diagram of proposed data augmentation. (a) Standard model training where training input patches are given to a model to make a prediction that is compared against the training target using the loss function used to update the model. (b) In the augmented training noise patches are added to the low noise training target to make a new augmented input. While training the model some proportion of training uses the augmented input while the remainder uses the original training inputs. This augmentation frequency is an additional training hyperparameter introduced by this method.')
+                subfig.add_caption('Noise Texture Augmented Model Training')
+            fig.add_caption(NoEscape(r'Schematic diagram of proposed data augmentation. (a) Standard model training where training input patches are given to a model to make a prediction that is compared against the training target using the loss function used to update the model. (b) In the augmented training noise patches are added to the low noise training target to make a new augmented input. While training, the proportion $\lambda$ of the training data is from the augmented inputs while the remaining $1-\lambda$ is from the original low dose training inputs. This augmentation parameter is an additional training hyperparameter introduced by this method.')) #augmentation is a form of regularization
             fig.append(Label('fig:schematic'))
 
         with doc.create(Subsection('Making Noise Texture Patches')):
@@ -81,7 +83,7 @@ Compared to noise images from the training set (Figure \ref{fig:trainingnoise}b)
         with doc.create(Subsection('Denoising Model Training with Augmentation')):
             doc.append(
 '''
-The goal of our proposed size-based noise data augmentation is to incorporate this diversity of noise textures into the model training loop to improve the model generalizability to remove noise from a wider range of noise textures as would be seen in smaller patients and pediatric patients. This is illustrated in diagram X, where every X percent of training examples, the usual low dose input, high dose training pair is replaced with a new augmented training pair. The new input is the high dose input with an added random noise patch where the ta 
+The goal of our proposed size-based noise data augmentation is to incorporate this diversity of noise textures into the model training loop to improve the model generalizability to remove noise from a wider range of noise textures as would be seen in smaller patients and pediatric patients. This is illustrated in Figure \ref{fig:schematic}, where every X percent of training examples (**include equation with relevant parameters to descibe the augmentation**), the usual low dose input, high dose training pair is replaced with a new augmented training pair. The new input is the high dose input with an added random noise patch where the ta 
 ''')
 
         with doc.create(Subsection('Size Generalization Evaluations')):
@@ -101,6 +103,12 @@ To assess whether the data augmentation was able to enhance the generalizability
             doc.append(NoEscape(r"Figure \ref{fig:noisereduction} then tracks the \emph{noise reduction} relative to FBP. Noise reduction is here defined as"))
             doc.append(NoEscape(r'100% \times \sigma_{FBP} - \sigma)/\sigma_{FBP}'))
             doc.append('Note that with this definition as the noise standard deviation approaches 0, the noise reduction approaches 100%.')
+
+            with doc.create(Figure(position='h!')) as fig:
+                image_filename = results_dir/'test_patient.png'
+                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
+                fig.add_caption('Adult patient from Low Dose Grand Challenge Dataset')
+                fig.append(Label('fig:testpatient'))
 
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'std_noise.png'
@@ -126,7 +134,7 @@ To assess whether the data augmentation was able to enhance the generalizability
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'nps.png'
                 fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.5\linewidth'))
-                fig.add_caption('Unnormalized noise power spectra across phantom sizes')
+                fig.add_caption('Unnormalized noise power spectra across phantom size')
 
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'mean_nps.png'

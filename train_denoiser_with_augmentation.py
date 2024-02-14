@@ -82,7 +82,7 @@ noise_patch_dict = {f.stem: np.load(f) for f in noise_files}
 noise_patches = np.concatenate(list(noise_patch_dict.values()))
 # noise_patches = np.zeros_like(noise_patches)
 # %%
-aug_thresh = 0.3
+aug_thresh = 0.65
 def augment(image_label, seed, max_noise=1):
   image, label = image_label
   new_seed = tf.random.experimental.stateless_split(seed, num=1)[0, :]

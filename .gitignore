@@ -9,3 +9,4 @@ noise_patches
 *.pyc
 results
 logs
+notebooks/.ipynb_checkpoints

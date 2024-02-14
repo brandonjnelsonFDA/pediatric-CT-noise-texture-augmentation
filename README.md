@@ -60,3 +60,12 @@ sudo apt-get install liboctave-dev
 
 Installing TexLive on Linux
 https://tug.org/texlive/quickinstall.html#running
+
+## LDGC
+
+L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333, L506 
+
+## Todo
+
+1. [ ] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline
+2. [ ] build pediatric only model

@@ -1,7 +1,7 @@
-experiment_name=pretrained_finetune
+experiment_name=precommit_065_
 base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
 # add notes written in LateX that will be added to the report and log
-notes='Adding the 131mm noise patches as a validation dataset showed that a 15 epoch fine tuning with data augmentation following normal MSE training had best validation score'
+notes='pre commit before introducing REDCNN using simple CNN with and without augmentation'
 
 LOG=results/results_log.md
 

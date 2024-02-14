@@ -155,7 +155,7 @@ Textures Average NPS''')
 
 
 def make_schematic(results_dir):
-
+    'http://magjac.com/graphviz-visual-editor/'
     dot_string = """digraph {
         fontname="Helvetica,Arial,sans-serif"
         node [fontname="Helvetica,Arial,sans-serif"]
@@ -182,7 +182,7 @@ def make_schematic(results_dir):
     graphs = pydot.graph_from_dot_data(dot_string)
     graphs[0].write_png(Path(results_dir) / 'standard_training_schematic.png')
 
-    dot_string = """digraph {
+    dot_string = r"""digraph {
         fontname="Helvetica,Arial,sans-serif"
         node [fontname="Helvetica,Arial,sans-serif"]
         edge [fontname="Helvetica,Arial,sans-serif"]
@@ -199,8 +199,8 @@ def make_schematic(results_dir):
         patches -> augmented;
         target ->  augmented [len=2.00];
 
-        input -> Model;
-        augmented -> Model
+        input -> Model  [label="1 - λ"];
+        augmented -> Model  [label="λ"];
         
         Model -> Prediction [len=2.00];
         Prediction -> loss [len=2.00];
