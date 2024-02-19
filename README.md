@@ -16,6 +16,9 @@ These are the preliminary results for the standard LCD CT (step 4)
 ## Install 
 jupyterlab via port forwarding
 https://thedatafrog.com/en/articles/remote-jupyter-notebooks/
+
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
 ### Conda
 conda create -n peds_aug_tensorflow --file requirements.txt -y -c simpleitk
 conda activate peds_aug_tensorflow
@@ -67,5 +70,5 @@ L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333
 
 ## Todo
 
-1. [ ] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline
+1. [ ] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline <<< current activity, when training finished work on
 2. [ ] build pediatric only model

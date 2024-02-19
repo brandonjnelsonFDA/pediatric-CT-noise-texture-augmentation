@@ -4,15 +4,36 @@ import urllib
 import zipfile
 from argparse import ArgumentParser
 
-import tensorflow as tf
+# import tensorflow as tf
 import SimpleITK as sitk
 
+from denoising.networks import RED_CNN
 
-simple_cnn_denoiser = tf.keras.models.load_model('models/simple_cnn_denoiser')
-simple_cnn_denoiser_augmented = tf.keras.models.load_model('models/simple_cnn_denoiser_augmented')
+import os
+import sys
+import torch
+from collections import OrderedDict
 
 
-def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batch_size=10, overwrite=True):
+def load_model(save_path, iter_=13000, multi_gpu=False):
+    REDCNN = RED_CNN()
+    f = os.path.join(save_path, 'REDCNN_{}iter.ckpt'.format(iter_))
+    if multi_gpu:
+        state_d = OrderedDict()
+        for k, v in torch.load(f):
+            n = k[7:]
+            state_d[n] = v
+        REDCNN.load_state_dict(state_d)
+        return REDCNN
+    else:
+        REDCNN.load_state_dict(torch.load(f))
+        return REDCNN
+
+cnn_denoiser = load_model('denoising/models/redcnn')
+cnn_denoiser_augmented = load_model('denoising/models/redcnn_augmented')
+
+# %%
+def denoise(input_dir, output_dir=None, model=None, name=None, offset=0, batch_size=3, overwrite=True):
     for series in input_dir.rglob('*.mhd'):
         if series.stem == 'ground_truth':
             continue
@@ -24,12 +45,12 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
             output = Path(str(output).replace('fbp', name))
             output.parent.mkdir(parents=True, exist_ok=True)
             x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
-            input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, x, y, 1).astype('float32') - offset
+            input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, 1, x, y).astype('float32') - offset
             sp_denoised = model.predict(input_array, batch_size=batch_size)
 
             sitk.WriteImage(sitk.GetImageFromArray(sp_denoised), output)
             print(f'{name} --> {output}')
-
+# %%
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Runs XCIST CT simulations on XCAT datasets')
@@ -50,15 +71,16 @@ if __name__ == '__main__':
                 {
                 'input_dir': data_dir / 'CCT189_peds_fbp',
                 'output_dir': data_dir / 'CCT189_peds_denoised_mse',
-                'model': simple_cnn_denoiser,
-                'name': 'simple CNN MSE',
+                'model': cnn_denoiser,
+                'name': 'RED-CNN',
                 },
                 {
                 'input_dir': data_dir / 'CCT189_peds_fbp',
                 'output_dir': data_dir / 'CCT189_peds_denoised_mse_w_augmentation',
-                'model': simple_cnn_denoiser_augmented,
-                'name': 'simple CNN MSE with augmentation',
+                'model': cnn_denoiser_augmented,
+                'name': 'RED-CNN augmented',
                 },
                 ]
     for dataset in datasets:
         denoise(**dataset)
+# %%

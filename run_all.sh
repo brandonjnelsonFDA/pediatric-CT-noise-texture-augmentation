@@ -1,7 +1,8 @@
-experiment_name=precommit_065_
+experiment_name=redcnn_augmented
 base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
 # add notes written in LateX that will be added to the report and log
-notes='pre commit before introducing REDCNN using simple CNN with and without augmentation'
+patch_size=64
+notes='Open source REDCNN implementation (https://github.com/SSinyu/RED-CNN) with augmentation added, augmentation now uses noise patches that are histogram matched to training data so only the texture differs, not the intensity statistics'
 
 LOG=results/results_log.md
 
@@ -16,15 +17,28 @@ printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' = >> $LOG
 printf '\n' >> $LOG
 printf "$notes \n" >> $LOG
 
-noise_patch_dir='./noise_patches'
+noise_patch_dir=./noise_patches/patch_size_${patch_size}x${patch_size}
 if [ ! -d  $noise_patch_dir ]; then
 echo noise patch dir not found, making one now: $noise_patch_dir
-python make_noise_patches.py $base_directory/CCT189_peds_fbp
+python make_noise_patches.py --data_path $base_directory/CCT189_peds_fbp \
+                             --save_path $noise_patch_dir \
+                             --patch_size $patch_size
 fi
 
-export TF_CPP_MIN_LOG_LEVEL=2 #<https://github.com/tensorflow/tensorflow/issues/59779>
-python train_denoiser_with_augmentation.py
-
+## Model Training
+# augmented
+python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/images \
+               --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
+               --load_mode=1 \
+               --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn_augmented \
+               --augment=1
+# non-augmented
+python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/images \
+               --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
+               --load_mode=1 \
+               --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn \
+               --augment=0
+## denoising test images
 python process_CCT189.py $base_directory
 
 export LD_LIBRARY_PATH=

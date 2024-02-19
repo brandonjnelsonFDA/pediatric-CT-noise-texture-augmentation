@@ -4,9 +4,10 @@ Ped-ETK
 LCD_CT*
 .venv
 *.csv
-.data_aug
+.data_aug*
 noise_patches
 *.pyc
 results
 logs
 notebooks/.ipynb_checkpoints
+denoising/save
