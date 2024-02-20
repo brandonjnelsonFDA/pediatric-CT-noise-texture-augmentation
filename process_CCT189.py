@@ -33,7 +33,7 @@ cnn_denoiser = load_model('denoising/models/redcnn')
 cnn_denoiser_augmented = load_model('denoising/models/redcnn_augmented')
 
 # %%
-def denoise(input_dir, output_dir=None, model=None, name=None, offset=0, batch_size=3, overwrite=True):
+def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batch_size=3, overwrite=True):
     for series in input_dir.rglob('*.mhd'):
         if series.stem == 'ground_truth':
             continue
@@ -46,8 +46,9 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=0, batch_s
             output.parent.mkdir(parents=True, exist_ok=True)
             x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
             input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, 1, x, y).astype('float32') - offset
-            sp_denoised = model.predict(input_array, batch_size=batch_size)
-
+            print(f'denoising {series} of {z} images in batches of {batch_size}')
+            sp_denoised = model.predict(input_array, batch_size=batch_size).reshape(x, y, z)
+            assert(sp_denoised.shape == (x, y, z))
             sitk.WriteImage(sitk.GetImageFromArray(sp_denoised), output)
             print(f'{name} --> {output}')
 # %%

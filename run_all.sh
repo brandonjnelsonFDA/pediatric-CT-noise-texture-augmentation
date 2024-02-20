@@ -36,8 +36,7 @@ python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/ima
 python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/images \
                --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
                --load_mode=1 \
-               --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn \
-               --augment=0
+               --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn
 ## denoising test images
 python process_CCT189.py $base_directory
 

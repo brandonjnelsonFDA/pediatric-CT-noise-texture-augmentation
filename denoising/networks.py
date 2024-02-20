@@ -2,6 +2,7 @@ import os
 import numpy as np
 import torch.nn as nn
 import torch
+from tqdm import tqdm
 
 class RED_CNN(nn.Module):
     def __init__(self, out_ch=96, norm_range_min=-1024, norm_range_max=3072):
@@ -60,17 +61,15 @@ class RED_CNN(nn.Module):
         with torch.no_grad():
             image = torch.tensor(image)
             n_images = image.shape[0]
-        batch_indices = np.arange(n_images)
-        if n_images % batch_size == 0:
-            batch_indices = np.split(batch_indices, n_images//batch_size)
-            if batch_size == 1:
-               batch_indices = np.array(batch_indices).reshape(-1, 1)
-        else:
-            modulo=n_images % batch_size
-            batch_indices = np.split(batch_indices[:n_images-modulo], n_images//batch_size)
-            batch_indices.append(n_images-modulo)
-        pred = np.zeros_like(image)
-        for batch in batch_indices:
-            print(batch)
-            pred[batch] = self.forward(image[batch]).detach().numpy()
-        return pred
+            batch_indices = np.arange(n_images)
+            if n_images % batch_size == 0:
+                batch_indices = np.split(batch_indices, n_images//batch_size)
+                if batch_size == 1: batch_indices = np.array(batch_indices).reshape(-1, 1)
+            else:
+                modulo=n_images % batch_size
+                batch_indices = np.split(batch_indices[:n_images-modulo], n_images//batch_size)
+                batch_indices.append(n_images-modulo)
+            pred = np.zeros_like(image)
+            for batch in tqdm(batch_indices):
+                pred[batch] = self.forward(image[batch]).detach().numpy()
+            return pred

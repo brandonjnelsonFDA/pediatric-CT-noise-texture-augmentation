@@ -79,7 +79,7 @@ class Solver(object):
             equal_hist_patches = {diam: match_histograms(input_images.reshape(-1, 1), reference=ref_images).reshape(input_shape) for diam, input_images in noise_patch_dict.items()}
 
             self.noise_patches = torch.tensor(np.concatenate(list(equal_hist_patches.values())).astype('int16'), device=self.device)
-        print('noise patch loading complete.')
+            print('noise patch loading complete.')
 
     def augment(self, image_label, aug_thresh=0.65):
         image, label = image_label

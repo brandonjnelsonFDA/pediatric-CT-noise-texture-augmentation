@@ -10,7 +10,20 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_path" , "/gpfs_projects/brandon.nelson/Mayo_LDGC/images", "--saved_path", "/gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files", "--augment", "1"]
+            "args": ["/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds"]
+        },
+        {
+            "name": "Python Debugger: main.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--data_path",
+                "/gpfs_projects/brandon.nelson/Mayo_LDGC/images",
+                "--saved_path",
+                "/gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files"
+            ]
         }
     ]
 }
