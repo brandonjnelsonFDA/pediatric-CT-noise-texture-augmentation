@@ -2,8 +2,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import SimpleITK as sitk
 
-from make_noise_patches import make_noise_images, load_mhd
+from make_noise_patches import make_noise_images
 
 
 def compute_nps(image):
@@ -92,7 +93,11 @@ def make_results_dict(summary, max_images=2000, verbose=True, diameters=None, do
                 idx += 1
                 f = summary[(summary['diameter [mm]'] == diameter) & (summary.recon == recon) & (summary['dose [%]']==dose)].filename
                 if verbose & (idx % 10 == 0): print(f'[{idx:03d}/{N:03d}] Making NPS and noise measures on: {diameter}mm, {dose} dose, {recon}')
-                vol = load_mhd(f)
+
+                img = sitk.ReadImage(f)
+                x, y, z = img.GetWidth(), img.GetHeight(), img.GetDepth()
+                vol = sitk.GetArrayFromImage(img).reshape(z, x, y)
+
                 vol = np.squeeze(vol).astype('int16')
                 results_dict[diameter][dose][recon] = dict()
                 noise_images = make_noise_images(vol, max_images=max_images)

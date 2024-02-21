@@ -5,12 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "Python Debugger: process_CCT189",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "args": ["/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds"]
+        },
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds",
+                "--output_directory",
+                "results/02-19-2024_23-36_redcnn_augmented/"
+            ]
         },
         {
             "name": "Python Debugger: main.py",

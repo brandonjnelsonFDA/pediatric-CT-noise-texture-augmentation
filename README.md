@@ -72,3 +72,20 @@ L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333
 
 1. [ ] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline <<< current activity, when training finished work on
 2. [ ] build pediatric only model
+
+Desired output directory structure:
+
+phantom /
+        / diameter /
+                   / dose /
+                          / recon
+                                  / sa, sp
+
+Current structure:
+
+phantom / 
+        phantom_recon /
+                       diameter /
+                                  recon / 
+                                         dose /
+                                               sa, sp

@@ -1,1 +1,6 @@
-{}
+{
+    "jupyter.widgetScriptSources": [
+        "unpkg.com",
+        "jsdelivr.com"
+    ]
+}

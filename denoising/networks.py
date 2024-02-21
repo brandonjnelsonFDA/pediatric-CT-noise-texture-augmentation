@@ -55,11 +55,10 @@ class RED_CNN(nn.Module):
         image = image * (self.norm_range_max - self.norm_range_min) + self.norm_range_min
         return image
 
-    def predict(self, image, batch_size=1):
+    def predict(self, image, batch_size=1, device='cpu'):
         if image.ndim == 2: image = image[None, None, :, :]
         if image.dtype != 'float32': image = image.astype('float32')
         with torch.no_grad():
-            image = torch.tensor(image)
             n_images = image.shape[0]
             batch_indices = np.arange(n_images)
             if n_images % batch_size == 0:
@@ -70,6 +69,7 @@ class RED_CNN(nn.Module):
                 batch_indices = np.split(batch_indices[:n_images-modulo], n_images//batch_size)
                 batch_indices.append(n_images-modulo)
             pred = np.zeros_like(image)
+            image = torch.tensor(image, device=device)
             for batch in tqdm(batch_indices):
-                pred[batch] = self.forward(image[batch]).detach().numpy()
+                pred[batch] = self.forward(image[batch]).to('cpu').numpy()
             return pred

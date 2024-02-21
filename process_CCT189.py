@@ -33,8 +33,13 @@ cnn_denoiser = load_model('denoising/models/redcnn')
 cnn_denoiser_augmented = load_model('denoising/models/redcnn_augmented')
 
 # %%
-def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batch_size=3, overwrite=True):
+def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, offset=1000, batch_size=32, overwrite=True):
+
+    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+    output_dir = output_dir or input_dir
     for series in input_dir.rglob('*.mhd'):
+        if kernel not in series.parts: continue
         if series.stem == 'ground_truth':
             continue
         input_image = sitk.ReadImage(series)
@@ -47,19 +52,29 @@ def denoise(input_dir, output_dir=None, model=None, name=None, offset=1000, batc
             x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
             input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, 1, x, y).astype('float32') - offset
             print(f'denoising {series} of {z} images in batches of {batch_size}')
-            sp_denoised = model.predict(input_array, batch_size=batch_size).reshape(x, y, z)
-            assert(sp_denoised.shape == (x, y, z))
-            sitk.WriteImage(sitk.GetImageFromArray(sp_denoised), output)
+
+            model.to(dev)
+            sp_denoised = model.predict(input_array, batch_size=batch_size, device=dev)
+
+            output_image = sitk.GetImageFromArray(sp_denoised.squeeze())
+            assert((output_image.GetDepth(),output_image.GetHeight(),output_image.GetWidth())==
+                    (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
+            sitk.WriteImage(output_image, output)
+            check_output_image = sitk.ReadImage(output)
+            assert((check_output_image.GetDepth(),check_output_image.GetHeight(), check_output_image.GetWidth())==
+                    (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
             print(f'{name} --> {output}')
 # %%
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Runs XCIST CT simulations on XCAT datasets')
-    parser.add_argument('base_directory', type=str, default="", help='directory containing images to be processed')
+    parser.add_argument('base_directory', type=str, default="data", help='directory containing images to be processed')
+    parser.add_argument('--kernel', type=str, default="fbp", help='input kernel to be processed')
     args = parser.parse_args()
 
-    data_dir = args.base_directory or 'data'
+    data_dir = args.base_directory
     data_dir = Path(data_dir)
+    kernel = args.kernel
     if not data_dir.exists():
         data_dir.mkdir(parents=True)
         url = 'https://zenodo.org/record/7996580/files/large_dataset.zip?download=1'
@@ -70,14 +85,16 @@ if __name__ == '__main__':
             zip_ref.extractall(fname.split('.zip')[0])
     datasets = [ 
                 {
-                'input_dir': data_dir / 'CCT189_peds_fbp',
-                'output_dir': data_dir / 'CCT189_peds_denoised_mse',
+                'input_dir': data_dir,
+                'output_dir': data_dir,
+                'kernel': kernel,
                 'model': cnn_denoiser,
                 'name': 'RED-CNN',
                 },
                 {
-                'input_dir': data_dir / 'CCT189_peds_fbp',
-                'output_dir': data_dir / 'CCT189_peds_denoised_mse_w_augmentation',
+                'input_dir': data_dir,
+                'output_dir': data_dir,
+                'kernel': kernel,
                 'model': cnn_denoiser_augmented,
                 'name': 'RED-CNN augmented',
                 },

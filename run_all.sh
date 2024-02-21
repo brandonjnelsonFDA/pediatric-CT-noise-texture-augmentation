@@ -1,8 +1,8 @@
-experiment_name=redcnn_augmented
+experiment_name=redcnn_augmented_dc_bias_removed
 base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
 # add notes written in LateX that will be added to the report and log
 patch_size=64
-notes='Open source REDCNN implementation (https://github.com/SSinyu/RED-CNN) with augmentation added, augmentation now uses noise patches that are histogram matched to training data so only the texture differs, not the intensity statistics'
+notes='Open source REDCNN implementation (https://github.com/SSinyu/RED-CNN) with augmentation added, augmentation now uses noise patches that are histogram matched to training data so only the texture differs, not the intensity statistics. Updated subtracting the DC component from the histogram matching which added about 3 HU, this is probably minor but could influence the HU accuracy'
 
 LOG=results/results_log.md
 
@@ -28,15 +28,15 @@ fi
 ## Model Training
 # augmented
 python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/images \
-               --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
-               --load_mode=1 \
-               --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn_augmented \
-               --augment=1
+                         --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
+                         --load_mode=1 \
+                         --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn_augmented \
+                         --augment=1
 # non-augmented
 python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/images \
-               --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
-               --load_mode=1 \
-               --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn
+                         --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
+                         --load_mode=1 \
+                         --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn
 ## denoising test images
 python process_CCT189.py $base_directory
 
@@ -46,9 +46,11 @@ octave-cli measure_LCD_diameter_dependence.m $base_directory $results_file
 
 python task_assessments.py $results_file
 
-python noise_assessments.py $base_directory -o $results_dir
+python noise_assessments.py $base_directory \
+                            --output_directory $results_dir
 
-python methods_figures.py $base_directory -o $results_dir
+python methods_figures.py $base_directory \
+                          --output_directory $results_dir
 
 echo Now writing summary report...
 cp -v references.bib $results_dir

@@ -53,6 +53,7 @@ class Solver(object):
             print('Use {} GPUs'.format(torch.cuda.device_count()))
             self.REDCNN = nn.DataParallel(self.REDCNN)
         self.REDCNN.to(self.device)
+        print(self.device)
 
         self.lr = args.lr
         self.criterion = nn.MSELoss()
@@ -77,7 +78,7 @@ class Solver(object):
             train_noise = x - y
             ref_images = train_noise.reshape(-1, 1).numpy()
             equal_hist_patches = {diam: match_histograms(input_images.reshape(-1, 1), reference=ref_images).reshape(input_shape) for diam, input_images in noise_patch_dict.items()}
-
+            equal_hist_patches = {diam: p - p.mean() for diam, p in equal_hist_patches.items()} # remove the DC bias introduced by the histogram matching
             self.noise_patches = torch.tensor(np.concatenate(list(equal_hist_patches.values())).astype('int16'), device=self.device)
             print('noise patch loading complete.')
 
