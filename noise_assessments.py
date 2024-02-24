@@ -72,11 +72,16 @@ def plot_nps_profiles(results_dict, results_dir=None, diameters=[112, 151, 292])
     colors = ['black', 'red', 'blue']
     f, ax = plt.subplots(figsize=(4.5, 4))
     for c, d in zip(colors, diameters):
-        h0, = ax.plot(results_dict[d][100]['fbp']['profile'], label=f'{d} fbp', linestyle='-', color=c)
-        h1, = ax.plot(results_dict[d][100]['simple CNN MSE']['profile'], label=f'{d} CNN', linestyle='--', color=c)
-        h2, = ax.plot(results_dict[d][100]['simple CNN MSE with augmentation']['profile'], label=f'{d} augment', linestyle=':', color=c)
+        handles = []
+        for recon, style in zip(results_dict[d][100], ['-', '--', ':']):
+            h, = ax.plot(results_dict[d][100][recon]['profile'], label=f'{d} {recon}', linestyle=style, color=c)
+            handles.append(h)
+            # h0, = ax.plot(results_dict[d][100]['fbp']['profile'], label=f'{d} fbp', linestyle='-', color=c)
+            # h1, = ax.plot(results_dict[d][100]['simple CNN MSE']['profile'], label=f'{d} CNN', linestyle='--', color=c)
+            # h2, = ax.plot(results_dict[d][100]['simple CNN MSE with augmentation']['profile'], label=f'{d} augment', linestyle=':', color=c)
         if c=='black':     
-            ax.legend([h0, h1, h2], ['FBP', 'CNN', 'Augmented'])
+            # ax.legend(handles, ['FBP', 'CNN', 'Augmented'])
+            ax.legend(handles, list(results_dict[d][100].keys()))
     ax.annotate("112 mm", (75, 1.2*1e7))
     ax.annotate("151 mm", (120, 0.7*1e7), color='red')
     ax.annotate("292 mm", (300, 0.3*1e7), color='blue')

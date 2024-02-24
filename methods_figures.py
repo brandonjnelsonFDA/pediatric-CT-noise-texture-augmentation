@@ -28,7 +28,7 @@ def plot_methods(datadir, results_dir=None):
     datadir = Path(datadir)
     results_dict, _ = load_data(datadir, results_dir)
 
-    noise_image_dict = make_noise_image_dict(Path(datadir) / 'CCT189_peds_fbp')
+    noise_image_dict = make_noise_image_dict(Path(datadir))
 
     diams = [112, 185, 216]
 
@@ -100,7 +100,7 @@ def plot_training_noise_comparison(results_dir=None):
 
     diams = [112, 151, 185, 292]
 
-    datadir = Path('/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds/CCT189_peds_fbp/')
+    datadir = Path('/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds')
     noise_patch_dict = prep_patches(datadir)
     training_noise = train_input - train_target
     train_nps = compute_nps(training_noise)
@@ -180,7 +180,7 @@ def make_schematic(results_dir):
     }"""
 
     graphs = pydot.graph_from_dot_data(dot_string)
-    graphs[0].write_png(Path(results_dir) / 'standard_training_schematic.png')
+    graphs[0].write_png(Path(results_dir) / 'standard_training_schematic.png') #<-- requires graphviz (`sudo apt get install graphviz`` or `conda install -c anaconda graphviz``)
 
     dot_string = r"""digraph {
         fontname="Helvetica,Arial,sans-serif"

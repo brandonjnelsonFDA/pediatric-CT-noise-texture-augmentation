@@ -31,13 +31,13 @@ observers = {LG_CHO_2D(),...
 
 %% Select datasets
 series_1.name = 'fbp';
-series_1.dir = fullfile(base_directory, 'CCT189_peds_fbp');
+series_1.dir = fullfile(base_directory);
 
 series_2.name = 'Simple CNN MSE';
-series_2.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse');
+series_2.dir  = fullfile(base_directory);
 
 series_3.name = 'Simple CNN MSE with Data Augmentation';
-series_3.dir  = fullfile(base_directory, 'CCT189_peds_denoised_mse_w_augmentation');
+series_3.dir  = fullfile(base_directory);
 
 series_list = [series_1, series_2, series_3];
 

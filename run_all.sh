@@ -40,6 +40,8 @@ python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/ima
 ## denoising test images
 python process_CCT189.py $base_directory
 
+python patient_images.py --output_directory $results_dir
+
 export LD_LIBRARY_PATH=
 # strange bug caused by Tensorflow need to clear this variable^, when I leave tensorflow for Pytorch and octave for python these shouldnt be issues anymore
 octave-cli measure_LCD_diameter_dependence.m $base_directory $results_file
