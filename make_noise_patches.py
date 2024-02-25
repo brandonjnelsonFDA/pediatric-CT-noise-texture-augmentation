@@ -31,13 +31,13 @@ def make_noise_patches(noise_images, patch_size=(30, 30), max_patches=30):
     return PatchExtractor(patch_size=patch_size, max_patches=max_patches).transform(noise_images)
 
 
-def make_noise_image_dict(datadir, dose=100):
+def make_noise_image_dict(datadir, dose=100, max_images=1000, kernel='fbp'):
     datadir = Path(datadir)
 
-    sa_file_dict={d.stem : next(d.rglob(f'dose_{dose:03d}/*/signal_absent.mhd')) for d in datadir.glob('diameter*mm')}
-    print(f'generating noise images from the following phantom scans: {sa_file_dict.keys()}')
+    sa_file_dict={d.stem : d/f'{kernel}/dose_{dose:03d}/signal_absent/signal_absent.mhd' for d in datadir.glob('diameter*mm')}
+    print(f'generating {max_images} {kernel} noise images from the following phantom scans: {sa_file_dict.keys()}')
     sa_image_dict = {k: load_mhd(v)-1000 for k, v in tqdm(sa_file_dict.items())}
-    noise_image_dict = {k: make_noise_images(v, max_images=1000) for k, v in sa_image_dict.items()}
+    noise_image_dict = {k: make_noise_images(v, max_images=max_images) for k, v in sa_image_dict.items()}
     return noise_image_dict
 
 
@@ -60,7 +60,6 @@ def save_patches(noise_patch_dir, noise_patch_dict, dtype='int16'):
 
 # %%
 if __name__ == '__main__':
-
     parser = ArgumentParser(description='Makes noise patches')
     parser.add_argument('--data_path', type=str, default='data', help='directory containing images to be processed')
     parser.add_argument('--save_path', type=str, default='noise_patches', help='save directory for noise patches')

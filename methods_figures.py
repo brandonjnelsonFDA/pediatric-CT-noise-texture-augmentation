@@ -11,7 +11,7 @@ from noise_assessments import load_data
 from make_noise_patches import make_noise_image_dict, prep_patches
 
 datadir = '/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds'
-results_dir = 'results/test'
+results_dir = 'results/02-22-2024_13-14_redcnn_augmented_dc_bias_removed'
 
 
 def get_square_patch(img, center, patch_width=30):
@@ -23,23 +23,37 @@ def get_patches(img, centers, patch_size=30):
     return {center: get_square_patch(img, center, patch_width=patch_size) for center in centers}
 
 
-def plot_methods(datadir, results_dir=None):
+def get_patch_center_xy(img, angle=0, distance=0.95, patch_size=30):
+    'distance is relative [0, 1], angle [radians]'
+    mask = img > img.mean()
+    radius_px = np.sqrt(mask.sum() / np.pi)
+    cx, cy = img.shape[0]/2, img.shape[1]/2
+    patch_radial_position = (1 - abs(np.cos(angle)+np.sin(angle))*patch_size/2/radius_px)*distance*radius_px
+    x, y = patch_radial_position*np.cos(angle), patch_radial_position*np.sin(angle)
+    return int(np.floor(x + cx)), int(np.floor(y + cy))
+
+def characterize_noise_texture(datadir, results_dir=None, patch_size=30, max_images=1000, kernel='fbp'):
     fontsize=8
     datadir = Path(datadir)
+    results_dir = Path(results_dir)
     results_dict, _ = load_data(datadir, results_dir)
 
-    noise_image_dict = make_noise_image_dict(Path(datadir))
+    noise_image_dict = make_noise_image_dict(Path(datadir), max_images=max_images, kernel=kernel)
 
     diams = [112, 185, 216]
 
     fig = plt.figure(figsize=(4, 5), dpi=300)
+    fig.suptitle(kernel)
     gs = gridspec.GridSpec(3, 2, wspace=0.15, hspace=0.1)
 
-    images = np.concatenate([results_dict[d][100]['fbp']['image']-1000 for d in diams], axis=1)
-    coords = [(256, 256), (50, 256), (110, 110)]
-    image_patches = [get_patches(results_dict[d][100]['fbp']['image']-1000, centers=coords) for d in diams]
+    offset = 1000 if kernel == 'fbp' else 0
+    img = results_dict[diams[0]][100][kernel]['image'] - offset
+
+    centers = [get_patch_center_xy(img, angle=angle, distance=distance) for angle,distance in [(0, 0), (np.pi, 0.85), (np.pi/4, 0.85)]]
+    image_patches = [get_patches(results_dict[d][100][kernel]['image']-offset, centers=centers, patch_size=patch_size) for d in diams]
 
     image_stds = [{k: (img.mean(), img.std()) for k, img in p.items()} for p in image_patches]
+    images = np.concatenate([results_dict[d][100][kernel]['image']-offset for d in diams], axis=1)
     ww = 80
     wl = 0
     ax = fig.add_subplot(gs[0, :])
@@ -51,8 +65,8 @@ def plot_methods(datadir, results_dir=None):
         for xy, (mean, std) in p.items():
             ax.annotate(f'[{mean:2.0f}, {std:2.0f}] HU', (xy[0] + idx*512, xy[1]), fontsize=5, bbox=dict(boxstyle='square,pad=0.3', fc="lightblue", ec="steelblue"))
 
-    images = np.concatenate([results_dict[d][100]['fbp']['noise image'] for d in diams], axis=1)
-    image_patches = [get_patches(results_dict[d][100]['fbp']['noise image'], centers=coords) for d in diams]
+    images = np.concatenate([results_dict[d][100][kernel]['noise image'] for d in diams], axis=1)
+    image_patches = [get_patches(results_dict[d][100][kernel]['noise image'], centers=centers, patch_size=patch_size) for d in diams]
 
     image_stds = [{k: (img.mean(), img.std()) for k, img in p.items()} for p in image_patches]
     ww2 = np.sqrt(2*ww**2)
@@ -66,8 +80,8 @@ def plot_methods(datadir, results_dir=None):
         for xy, (mean, std) in p.items():
             ax.annotate(f'[{mean:2.0f}, {std:2.0f}] HU', (xy[0] + idx*512, xy[1]), fontsize=5, bbox=dict(boxstyle='square,pad=0.3', fc="lightblue", ec="steelblue"))
 
-    centers = [(256, 256), (50, 256), (110, 110)]
-    corner_patches = [get_patches(noise_image_dict[f'diameter{x}mm'], centers=centers) for x in diams]
+    # centers = [(256, 256), (50, 256), (110, 110)]
+    corner_patches = [get_patches(noise_image_dict[f'diameter{x}mm'], centers=centers, patch_size=patch_size) for x in diams]
 
     corners= list(corner_patches[0].keys())
     region_patches = np.concatenate([np.concatenate([p[c][0] for p in corner_patches], axis=1) for c in corners])
@@ -82,14 +96,16 @@ def plot_methods(datadir, results_dir=None):
 
 
     ax = fig.add_subplot(gs[2, 1])
-    ax.imshow(np.concatenate([np.concatenate([compute_nps(p[c]) for p in corner_patches], axis=1) for c in corners]), aspect='equal')
+    ax.imshow(np.concatenate([np.concatenate([compute_nps(p[c] - p[c].mean()) for p in corner_patches], axis=1) for c in corners]), aspect='equal')
     ax.set_title('(d) patch NPS', fontsize=fontsize)
     ax.set_xlabel(f'{diams} mm', fontsize=8)
     ax.set_ylabel(f'[upper left, top, center]', fontsize=8)
     ax.set_xticks([])
     ax.set_yticks([])
     if results_dir is None: return
-    fig.savefig(Path(results_dir) /'methods.png', dpi=600, bbox_inches='tight')
+    fname = Path(results_dir) /f'noise_texture_{kernel}.png'
+    print(f'saving to --> {fname}')
+    fig.savefig(fname, dpi=600, bbox_inches='tight')
 
 
 def plot_training_noise_comparison(results_dir=None):
@@ -214,22 +230,17 @@ def make_schematic(results_dir):
     graphs = pydot.graph_from_dot_data(dot_string)
     graphs[0].write_png(Path(results_dir) / 'augmented_training_schematic.png')
 
-def main(datadir, results_dir):
-    plot_methods(datadir=Path(datadir), results_dir=Path(results_dir))
-    plot_training_noise_comparison(results_dir)
-    make_schematic(results_dir)
+def main(args):
+    characterize_noise_texture(datadir=args.base_directory, results_dir=args.output_directory, patch_size=args.patch_size, max_images=args.max_images, kernel=args.kernel)
+    plot_training_noise_comparison(args.output_directory)
+    make_schematic(args.output_directory)
 # %%
 if __name__ == '__main__':
-
     parser = ArgumentParser(description='Make Methods Plots')
     parser.add_argument('base_directory', nargs='?', default="", help='directory containing images to be processed')
     parser.add_argument('-o', '--output_directory', type=str, required=False, default="results/test", help='directory to save resulting plots and files')
-
+    parser.add_argument('--patch_size', type=int, default=64, help='side length of square patches to be extracted, e.g. patch_size=30 yields 30x30 patches')
+    parser.add_argument('--max_images', type=int, default=500, help='number of noise images to average for noise characterization, more images leads to cleaner NPS images but may require a lot of memory if using large patch sizes')
+    parser.add_argument('--kernel', type=str, default='fbp', help='recon kernel to characterize, most be in `base_directory`')
     args = parser.parse_args()
-
-    datadir = args.base_directory or datadir
-    results_dir = args.output_directory or results_dir
-
-    main(datadir, results_dir)
-# %%
-
+    main(args)

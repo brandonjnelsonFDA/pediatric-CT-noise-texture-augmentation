@@ -21,7 +21,9 @@
             "args": [
                 "/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds",
                 "--output_directory",
-                "results/02-22-2024_13-14_redcnn_augmented_dc_bias_removed"
+                "results/02-22-2024_13-14_redcnn_augmented_dc_bias_removed",
+                "--patch_size",
+                "64"
             ]
         },
         {

@@ -17,9 +17,6 @@ from measure import compute_measure
 
 from pathlib import Path
 
-
-# noise_patches = np.zeros_like(noise_patches)
-# %%
 class Solver(object):
     def __init__(self, args, data_loader):
         self.mode = args.mode
@@ -85,7 +82,7 @@ class Solver(object):
     def augment(self, image_label, aug_thresh=0.65):
         image, label = image_label
         noise_patch = self.noise_patches[torch.randperm(len(image))].reshape_as(image)
-        noise_lambda = torch.rand([1])[0].item() # adds a random amount of noise, consider ablating to see affect with and without this (seems similar to the noise level augmentation which was generally beneficial whereas having it off would be just augmenting with a single noise level (equal to quarter dose but with different texture))
+        # noise_lambda = torch.rand([1])[0].item() # adds a random amount of noise, consider ablating to see affect with and without this (seems similar to the noise level augmentation which was generally beneficial whereas having it off would be just augmenting with a single noise level (equal to quarter dose but with different texture))
         add_noise = torch.rand([1])[0].item() > aug_thresh #from 0.5
 
         if add_noise:
