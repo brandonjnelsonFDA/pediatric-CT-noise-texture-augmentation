@@ -5,8 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import pydot
+from tqdm import tqdm
 
-from nps_utils import compute_nps
+from sklearn.feature_extraction.image import PatchExtractor
+
+from nps_utils import compute_nps, radial_profile
 from noise_assessments import load_data
 from make_noise_patches import make_noise_image_dict, prep_patches
 
@@ -108,24 +111,34 @@ def characterize_noise_texture(datadir, results_dir=None, patch_size=30, max_ima
     fig.savefig(fname, dpi=600, bbox_inches='tight')
 
 
-def plot_training_noise_comparison(results_dir=None):
-    data_dir = Path('data/')
+def plot_training_noise_comparison(datadir, train_data_dir, results_dir=None, max_images=1000, patch_size=64):
+    """
+    datadir: directory containing test images
+    training_data_dir: model training dataset directory
+    """
 
-    train_input = np.load(data_dir/'Denoising_Data/train_input.npy')
-    train_target = np.load(data_dir/'Denoising_Data/train_target.npy')
+    print(f'generating patches from training dataset {train_data_dir}')
+    test_patient = 'L506'
+    train_data_dir = Path(train_data_dir)
+    print('loading training input patches')
+    train_input = np.array([np.load(o) for o in tqdm(sorted(list(train_data_dir.glob('*_input.npy')))) if o.stem.split('_')[0] != test_patient])[:max_images]
+    train_input = PatchExtractor(patch_size=(patch_size, patch_size), max_patches=100, random_state=1).transform(train_input)
 
-    diams = [112, 151, 185, 292]
+    print('loading training target patches')
+    train_target = np.array([np.load(o) for o in tqdm(sorted(list(train_data_dir.glob('*_target.npy')))) if o.stem.split('_')[0] != test_patient])[:max_images]
+    train_target = PatchExtractor(patch_size=(patch_size, patch_size), max_patches=100, random_state=1).transform(train_target)
 
-    datadir = Path('/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds')
-    noise_patch_dict = prep_patches(datadir)
     training_noise = train_input - train_target
+
+    training_noise = np.array([o - o.mean() for o in training_noise]) # real data can be a bit messy, so for better visualization of noise, subtract the DC component from each
+    # training_noise = training_noise - training_noise.mean()
     train_nps = compute_nps(training_noise)
 
+    # filtering out mostly air patches for visualization 
     patches_to_keep_idx = np.squeeze(train_target.mean(axis=(1,2)) > 0)
     train_input = train_input[patches_to_keep_idx]
     train_target = train_target[patches_to_keep_idx]
     training_noise = train_input - train_target
-
 
     f, axs = plt.subplots(2, 2, figsize=(4.5, 5), dpi=300, tight_layout=True)
     axs = axs.flatten()
@@ -151,7 +164,8 @@ def plot_training_noise_comparison(results_dir=None):
     axs[2].set_title(
 '''(c) Training Noise
 Textures Average NPS''')
-
+    diams = [112, 151, 185, 292]
+    noise_patch_dict = prep_patches(datadir, patch_size=(patch_size, patch_size))
     normalize = lambda x: x/x.sum()
     patch_nps = [normalize(compute_nps(noise_patch_dict[f'diameter{x}mm'])) for x in diams]
     axs[3].imshow(np.concatenate(
@@ -160,14 +174,16 @@ Textures Average NPS''')
     idx=0
     for i in range(2):
         for j in range(2):
-            axs[3].annotate(f'{diams[idx]} mm', (4+30*i, 4+30*j), color='white')
+            axs[3].annotate(f'{diams[idx]} mm', ((0.125+i)*patch_size, (0.125+j)*patch_size), color='white')
             idx+=1
     axs[3].set_title(
 '''(d) Generated Noise
 Textures Average NPS''')
     axs[3].axis('off')
     if results_dir is None: return
-    f.savefig(Path(results_dir) /'trainingnoise.png', dpi=600, bbox_inches='tight')
+    fname = Path(results_dir) /'trainingnoise.png'
+    print(f'saving to --> {fname}')
+    f.savefig(fname, dpi=600, bbox_inches='tight')
 
 
 def make_schematic(results_dir):
@@ -232,7 +248,7 @@ def make_schematic(results_dir):
 
 def main(args):
     characterize_noise_texture(datadir=args.base_directory, results_dir=args.output_directory, patch_size=args.patch_size, max_images=args.max_images, kernel=args.kernel)
-    plot_training_noise_comparison(args.output_directory)
+    plot_training_noise_comparison(datadir=args.base_directory, results_dir=args.output_directory, patch_size=args.patch_size, max_images=args.max_images, train_data_dir=args.saved_path)
     make_schematic(args.output_directory)
 # %%
 if __name__ == '__main__':
@@ -242,5 +258,7 @@ if __name__ == '__main__':
     parser.add_argument('--patch_size', type=int, default=64, help='side length of square patches to be extracted, e.g. patch_size=30 yields 30x30 patches')
     parser.add_argument('--max_images', type=int, default=500, help='number of noise images to average for noise characterization, more images leads to cleaner NPS images but may require a lot of memory if using large patch sizes')
     parser.add_argument('--kernel', type=str, default='fbp', help='recon kernel to characterize, most be in `base_directory`')
+    parser.add_argument('--saved_path', type=str, default='./npy_img/', help='numpy files containing training data examples')
+
     args = parser.parse_args()
     main(args)

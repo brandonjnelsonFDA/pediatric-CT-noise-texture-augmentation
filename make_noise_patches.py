@@ -35,7 +35,7 @@ def make_noise_image_dict(datadir, dose=100, max_images=1000, kernel='fbp'):
     datadir = Path(datadir)
 
     sa_file_dict={d.stem : d/f'{kernel}/dose_{dose:03d}/signal_absent/signal_absent.mhd' for d in datadir.glob('diameter*mm')}
-    print(f'generating {max_images} {kernel} noise images from the following phantom scans: {sa_file_dict.keys()}')
+    print(f'generating {max_images} {kernel} noise images from the following phantom scans: {sorted(sa_file_dict.keys())}')
     sa_image_dict = {k: load_mhd(v)-1000 for k, v in tqdm(sa_file_dict.items())}
     noise_image_dict = {k: make_noise_images(v, max_images=max_images) for k, v in sa_image_dict.items()}
     return noise_image_dict

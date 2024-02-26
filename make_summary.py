@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 def main(args):
     results_dir = Path(args.results_directory)
     notes=args.notes
+    patch_size = args.patch_size
     geometry_options = {"tmargin":"1in", "bmargin":"1in", "lmargin":"1in", "rmargin":"1in"}
     doc = Document(geometry_options=geometry_options)
 
@@ -65,7 +66,7 @@ Water cylinders of different sizes were numerically simulated with CT projection
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'noise_texture_fbp.png'
                 fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
-                fig.add_caption('Creating noise patches of varying texture for data augmentation. (a) Water phantoms of varying diameters (112, 185, and 216 mm are shown) are virtually scanned, [mean, standard deviation] are shown for different 30x30 pixel patches from different regions of the image. Taking the difference of multiple repeat scans with different instances of projection Poisson noise yields the noise only images (b). (c) patches taken from different regions around the noise images show different noise orientations. Noise grain size also decreases with increasing phantom size. (d) 2D Noise power spectra illustrate different orientations and spatial frequencies of noise between patches taken from different regions and phantom sizes.')
+                fig.add_caption(f'Creating noise patches of varying texture for data augmentation. (a) Water phantoms of varying diameters (112, 185, and 216 mm are shown) are virtually scanned, [mean, standard deviation] are shown for different {patch_size}x{patch_size} pixel patches from different regions of the image. Taking the difference of multiple repeat scans with different instances of projection Poisson noise yields the noise only images (b). (c) patches taken from different regions around the noise images show different noise orientations. Noise grain size also decreases with increasing phantom size. (d) 2D Noise power spectra illustrate different orientations and spatial frequencies of noise between patches taken from different regions and phantom sizes.')
                 fig.append(Label('fig:methods'))
 
             doc.append(NoEscape(r'''

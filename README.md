@@ -28,10 +28,6 @@ conda activate peds_aug_tensorflow
 
 ## Steps
 
-## TODOs
-1. try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together
-2. try transfer learning,
-3. 
 FAQS
 
 Common errors:
@@ -68,10 +64,12 @@ https://tug.org/texlive/quickinstall.html#running
 
 L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333, L506 
 
-## Todo
+## TODO
 
 1. [X] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline <<< current activity, when training finished work on
-2. [ ] build pediatric only model
+2. [ ] measure denoising efficiency across all phantom sizes similar to [iq_phantom_validation.py](https://github.com/bnel1201/Ped-ETK/blob/main/evaluation/iq_phantom_validation.py)
+3. [ ] build pediatric only model --> peds train/test to get upper bound
+4. [ ] try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together
 
 Desired output directory structure:
 
