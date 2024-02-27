@@ -5,15 +5,29 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds",
+                "--output_directory",
+                "results/02-26-2024_10-18_redcnn_remove_random_noise_level",
+            ]
+        },
+        {
             "name": "Python Debugger: process_CCT189",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds"]
+            "args": [
+                "/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds"
+            ]
         },
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "Python Debugger: Methods Figures",
             "type": "python",
             "request": "launch",
             "program": "${file}",

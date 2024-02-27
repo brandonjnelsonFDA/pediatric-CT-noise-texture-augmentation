@@ -19,9 +19,12 @@ def write_mhd(array, fname): sitk.WriteImage(sitk.GetImageFromArray(array), fnam
 
 def make_noise_images(sa_images, max_images = 500):
     noise_images = []
-    for idx, s in enumerate(combinations(sa_images, 2)):
-        if idx < max_images:
-            noise_images.append(s[1] - s[0])
+    for count, image_idxs in enumerate(combinations(range(len(sa_images)), 2)):
+        if count < max_images:
+            noise_image = sa_images[image_idxs[1]] - sa_images[image_idxs[0]]
+            if noise_image.mean() > 100:
+                raise RuntimeError(f'Error in noise image at indices {image_idxs}. Mean: {noise_image.mean} > 100')
+            noise_images.append(noise_image)
     noise_images = np.array(noise_images)
     noise_images.reshape([*noise_images.shape, 1])
     return noise_images

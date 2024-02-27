@@ -199,7 +199,7 @@ def main(datadir, results_dir='results/test'):
 
 
 datadir = '/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds'
-results_dir = 'results/test'
+results_dir = 'results/02-26-2024_10-18_redcnn_remove_random_noise_level'
 # %%
 
 if __name__ == '__main__':

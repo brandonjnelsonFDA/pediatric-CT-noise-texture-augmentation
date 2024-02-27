@@ -67,7 +67,7 @@ class RED_CNN(nn.Module):
             else:
                 modulo=n_images % batch_size
                 batch_indices = np.split(batch_indices[:n_images-modulo], n_images//batch_size)
-                batch_indices.append(n_images-modulo)
+                batch_indices.append(list(range(n_images-modulo, n_images)))
             pred = np.zeros_like(image)
             image = torch.tensor(image, device=device)
             for batch in tqdm(batch_indices):

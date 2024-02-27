@@ -52,7 +52,7 @@ python methods_figures.py $base_directory \
                           --patch_size $patch_size \
                           --max_images 1000 \
                           --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
-                          --kernel fbp \
+                          --kernel fbp
 
 python methods_figures.py $base_directory \
                           --output_directory $results_dir \
