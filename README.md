@@ -75,7 +75,7 @@ L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333
 6. [ ] add more models [https://github.com/prabhatkc/ct-recon/tree/main/Denoising/DLdenoise](Prabhat's DLdenoise repo)
 
 Desired output directory structure:
-
+(anthropormorphic does this: /gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/anthropomorphic) but not CCT189 yet
 phantom /
         / diameter /
                     / sa, sp
@@ -98,10 +98,10 @@ Ideally these notebooks will import the main code so as to prevernt multiple ver
 
 Method development:
 
- - characterizing noise properties in patient data
+ - [ ]characterizing noise properties in patient data
    - adult training data
    - peds testing data
- - augmentation development
+ - [ ] augmentation development
    - inspecting phantom scans and noise images
    - patch generation
    - comparing patch noise properties with adult training and pediatric testing data
@@ -115,6 +115,7 @@ Evaluation Results:
  - [ ] Sharpness preservation
    -  MTF plots
 - [X] Noise texture preservation
+  - Uniform phantom images and noise difference images
   - NPS plots
 - [ ] Task performance
   - low contrast detectability
