@@ -1,4 +1,3 @@
-Start by
 
 1. [X] downloading the pretrained denoising models from the [Denoising tutorial](https://colab.research.google.com/drive/1N8V56eHEx3uIWIahBvRGAorszAziyAs7#scrollTo=FxrP4SiMdmUT)
     - might need to add a model save option
@@ -8,23 +7,25 @@ Start by
 5. save that tutorial as a new "advanced tutorial" for the LCD toolkit
 6. [X] next get a baseline performance of these models with PED-ETK
 7. start developing data aug and compare reevaluate comparing against previous baselines
- - ready on [google colab](https://colab.research.google.com/drive/1aYFFunBcIK2D98qPEmMVqO98uVWepziW#scrollTo=Zt9LBQdAHfYy), need to bring here
+
+- ready on [google colab](https://colab.research.google.com/drive/1aYFFunBcIK2D98qPEmMVqO98uVWepziW#scrollTo=Zt9LBQdAHfYy), need to bring here
 
 ![Alt text](LCD_results.png)
 These are the preliminary results for the standard LCD CT (step 4)
 
-## Install 
-jupyterlab via port forwarding
-https://thedatafrog.com/en/articles/remote-jupyter-notebooks/
+## Install
 
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+jupyterlab via port forwarding
+<https://thedatafrog.com/en/articles/remote-jupyter-notebooks/>
+
+pip3 install torch torchvision torchaudio --index-url <https://download.pytorch.org/whl/cu118>
 
 ### Conda
+
 conda create -n peds_aug_tensorflow --file requirements.txt -y -c simpleitk
 conda activate peds_aug_tensorflow
 
 ### Pip
-
 
 ## Steps
 
@@ -35,7 +36,7 @@ Octave
 
 If installing and running a fresh Octab
 
-Installing Image on Octave `pkg install -forge image` 
+Installing Image on Octave `pkg install -forge image`
 
 ```
     /bin/bash: /home/brandon.nelson/miniconda3/envs/peds_data_aug/lib/libtinfo.so.6: no version information available (required by /bin/bash)
@@ -58,18 +59,20 @@ pkg: please install the Debian package "liboctave-dev" to get the mkoctfile comm
 sudo apt-get install liboctave-dev
 
 Installing TexLive on Linux
-https://tug.org/texlive/quickinstall.html#running
+<https://tug.org/texlive/quickinstall.html#running>
 
 ## LDGC
 
-L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333, L506 
+L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333, L506
 
 ## TODO
 
 1. [X] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline <<< current activity, when training finished work on
-2. [ ] measure denoising efficiency across all phantom sizes similar to [iq_phantom_validation.py](https://github.com/bnel1201/Ped-ETK/blob/main/evaluation/iq_phantom_validation.py)
-3. [ ] build pediatric only model --> peds train/test to get upper bound
-4. [ ] try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together
+2. [ ] double check NPS results
+3. [ ] measure denoising efficiency across all phantom sizes similar to [iq_phantom_validation.py](https://github.com/bnel1201/Ped-ETK/blob/main/evaluation/iq_phantom_validation.py)
+4. [ ] build pediatric only model --> peds train/test to get upper bound
+5. [ ] try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together\
+6. [ ] add more models [https://github.com/prabhatkc/ct-recon/tree/main/Denoising/DLdenoise](Prabhat's DLdenoise repo)
 
 Desired output directory structure:
 
@@ -78,13 +81,40 @@ phantom /
                     / sa, sp
                             / dose /
                                    / recon
-                                  
 
 Current structure:
 
-phantom / 
-        phantom_recon /
-                       diameter /
-                                  recon / 
+phantom /
+        / diameter /
+                    phantom_recon/
+                                  recon /
                                          dose /
                                                sa, sp
+
+Notebook layout
+---------------
+
+Ideally these notebooks will import the main code so as to prevernt multiple versions from floating around and will correspond to different sections of the paper
+
+Method development:
+
+ - characterizing noise properties in patient data
+   - adult training data
+   - peds testing data
+ - augmentation development
+   - inspecting phantom scans and noise images
+   - patch generation
+   - comparing patch noise properties with adult training and pediatric testing data
+
+Evaluation Results:
+
+ - [ ] Denoising efficiency
+   - noise magnitude reduction uniform phantoms
+   - noise magnitude reduction/RMSE in anthropomorphic phantoms
+  
+ - [ ] Sharpness preservation
+   -  MTF plots
+- [X] Noise texture preservation
+  - NPS plots
+- [ ] Task performance
+  - low contrast detectability

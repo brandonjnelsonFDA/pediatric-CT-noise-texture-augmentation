@@ -58,8 +58,8 @@ def make_delta_df(noise_df, measurement='std', ref_recon='fbp'):
     control_df = noise_df[noise_df.recon == ref_recon]
 
     nrecons = len(experiment_df.recon.unique())
-    temp_control = pd.concat(nrecons*[control_df]).reset_index()
-    temp_experiment = experiment_df.reset_index()
+    temp_control = pd.concat(nrecons*[control_df]).sort_values(by='diameter [mm]').reset_index(drop=True)
+    temp_experiment = experiment_df.sort_values(by='diameter [mm]').reset_index(drop=True)
     col_name = f'$\Delta$ {measurement}'
     unit = 'HU' if measurement == 'std' else '1/pix'
     temp_experiment[f'{col_name} [{unit}]'] = temp_experiment[measurement] - temp_control[measurement]

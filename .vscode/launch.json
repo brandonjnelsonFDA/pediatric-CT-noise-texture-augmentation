@@ -13,12 +13,12 @@
             "args": [
                 "/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds",
                 "--output_directory",
-                "results/02-26-2024_10-18_redcnn_remove_random_noise_level",
+                "results/02-26-2024_19-52_redcnn_remove_random_noise_level",
             ]
         },
         {
             "name": "Python Debugger: process_CCT189",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -28,7 +28,7 @@
         },
         {
             "name": "Python Debugger: Methods Figures",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -44,7 +44,7 @@
         },
         {
             "name": "Python Debugger: main.py",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",

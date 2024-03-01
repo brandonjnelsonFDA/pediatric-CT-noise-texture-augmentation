@@ -60,6 +60,8 @@ class RED_CNN(nn.Module):
         if image.dtype != 'float32': image = image.astype('float32')
         with torch.no_grad():
             n_images = image.shape[0]
+            if batch_size > n_images:
+                batch_size = n_images
             batch_indices = np.arange(n_images)
             if n_images % batch_size == 0:
                 batch_indices = np.split(batch_indices, n_images//batch_size)

@@ -1,5 +1,7 @@
 experiment_name=redcnn_remove_random_noise_level
-base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds
+base_directory=/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation
+phantom_directory=$base_directory/CCT189_peds
+anthropomorphic_directory=$base_directory/anthropomorphic
 # add notes written in LateX that will be added to the report and log
 patch_size=64
 notes='Open source REDCNN implementation (https://github.com/SSinyu/RED-CNN) with augmentation added, augmentation now uses noise patches that are histogram matched to training data so only the texture differs, not the intensity statistics. Removed noise_lambda = torch.rand([1])[0].item(), now only the noise magnitude equal to training set is being added, this is a simpler training than what was'
@@ -17,7 +19,7 @@ printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' = >> $LOG
 printf '\n' >> $LOG
 printf "$notes \n" >> $LOG
 
-python make_noise_patches.py --data_path $base_directory \
+python make_noise_patches.py --data_path $phantom_directory \
                              --save_path 'noise_patches' \
                              --patch_size $patch_size
 
@@ -34,34 +36,36 @@ python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/ima
                          --load_mode=1 \
                          --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn
 ## denoising test images
-python process_CCT189.py $base_directory
+python apply_denoisers.py $phantom_directory
+
+python apply_denoisers.py $anthropomorphic_directory
 
 python patient_images.py --output_directory $results_dir
 
 export LD_LIBRARY_PATH=
 # strange bug caused by Tensorflow need to clear this variable^, when I leave tensorflow for Pytorch and octave for python these shouldnt be issues anymore
-octave-cli measure_LCD_diameter_dependence.m $base_directory $results_file
+octave-cli measure_LCD_diameter_dependence.m $phantom_directory $results_file
 
 python task_assessments.py $results_file
 
-python noise_assessments.py $base_directory \
+python noise_assessments.py $phantom_directory \
                             --output_directory $results_dir
 
-python methods_figures.py $base_directory \
+python methods_figures.py $phantom_directory \
                           --output_directory $results_dir \
                           --patch_size $patch_size \
                           --max_images 1000 \
                           --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
                           --kernel fbp
 
-python methods_figures.py $base_directory \
+python methods_figures.py $phantom_directory \
                           --output_directory $results_dir \
                           --patch_size $patch_size \
                           --max_images 1000 \
                           --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
                           --kernel RED-CNN
 
-python methods_figures.py $base_directory \
+python methods_figures.py $phantom_directory \
                           --output_directory $results_dir \
                           --patch_size $patch_size \
                           --max_images 1000 \
