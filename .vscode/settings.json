@@ -2,5 +2,6 @@
     "jupyter.widgetScriptSources": [
         "unpkg.com",
         "jsdelivr.com"
-    ]
+    ],
+    "workbench.editorLargeFileConfirmation": 30
 }

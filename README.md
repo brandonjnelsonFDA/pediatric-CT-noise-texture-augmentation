@@ -68,14 +68,14 @@ L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333
 ## TODO
 
 1. [X] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline <<< current activity, when training finished work on
-2. [ ] double check NPS results
+2. [X] double check NPS results
 3. [ ] measure denoising efficiency across all phantom sizes similar to [iq_phantom_validation.py](https://github.com/bnel1201/Ped-ETK/blob/main/evaluation/iq_phantom_validation.py)
 4. [ ] build pediatric only model --> peds train/test to get upper bound
 5. [ ] try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together\
 6. [ ] add more models [https://github.com/prabhatkc/ct-recon/tree/main/Denoising/DLdenoise](Prabhat's DLdenoise repo)
 
 Desired output directory structure:
-(anthropormorphic does this: /gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/anthropomorphic) but not CCT189 yet
+(anthropomorphic does this: /gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/anthropomorphic) but not CCT189 yet
 phantom /
         / diameter /
                     / sa, sp
@@ -91,31 +91,35 @@ phantom /
                                          dose /
                                                sa, sp
 
-Notebook layout
+Notebook Layout
 ---------------
 
-Ideally these notebooks will import the main code so as to prevernt multiple versions from floating around and will correspond to different sections of the paper
+Ideally these notebooks will import the main code so as to prevent multiple versions from floating around and will correspond to different sections of the paper
 
 Method development:
 
- - [ ]characterizing noise properties in patient data
-   - adult training data
-   - peds testing data
- - [ ] augmentation development
-   - inspecting phantom scans and noise images
-   - patch generation
-   - comparing patch noise properties with adult training and pediatric testing data
+- [ ]characterizing noise properties in patient data
+  a. adult training data
+  b. peds testing data
+  c. compare noise properties in peds xcats vs adult xcats and confirm they agree with phantoms of equal sizes
+- [ ] augmentation development
+  a. inspecting phantom scans and noise images
+  b. patch generation
+  c. comparing patch noise properties with adult training and pediatric testing data
 
 Evaluation Results:
 
- - [ ] Denoising efficiency
-   - noise magnitude reduction uniform phantoms
-   - noise magnitude reduction/RMSE in anthropomorphic phantoms
+- [ ] Denoising efficiency
+  - [x] noise magnitude reduction in uniform phantoms
+  - [x] noise magnitude redcucion in anthropomorphic phantoms
+  - [ ] noise magnitude reduction in adult patient images (no peds patient images)
+  - [x] RMSE reduction in uniform phantoms
+  - [x] RMSE in anthropomorphic phantoms
   
- - [ ] Sharpness preservation
-   -  MTF plots
+- [ ] Sharpness preservation
+ a. MTF plots
 - [X] Noise texture preservation
-  - Uniform phantom images and noise difference images
-  - NPS plots
+ a. Uniform phantom images and noise difference images
+ b. NPS plots
 - [ ] Task performance
-  - low contrast detectability
+ a. low contrast detectability

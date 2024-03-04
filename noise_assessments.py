@@ -176,7 +176,7 @@ def plot_noise_reduction(results_dict, results_dir=None, doses=[100, 25]):
     return outfilename
 
 
-def load_data(datadir, results_dir):
+def load_data(datadir, results_dir='.'):
     datadir = Path(datadir)
     results_dir = Path(results_dir)
 
