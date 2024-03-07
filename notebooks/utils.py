@@ -287,28 +287,32 @@ def measure_roi_std_results(meta_df, roi_diameter=None):
         :meta_df: metadata dataframe
         :roi_diameter: diameter of circlular ROI. If `roi_diameter` is an **integer** then roi_diameter is in pixels e.g. 100, else if `roi_diameter` is **float** e.g. 0.3 then it is assumed a fraction of the phantom's effective diameter. Note for noise measurements IEC standard suggests centred circle ROI 40% of phantom diameter
     """
-    
+    meta_df = meta_df.copy()
     meta_df['sim number'] = np.nan
     meta_df['noise std'] = np.nan
-
+    default_diameters = {'uniform': 0.4, 'MITA-LCD':0.3, 'anthropomorphic': 0.2}
+    if roi_diameter:
+        if isinstance(roi_diameter, dict):
+            default_diameters.update(roi_diameter)
+        else:
+            default_diameters = {k: roi_diameter for k in default_diameters}
+    roi_diameter = default_diameters
     rows_list = []
     for idx, patient in meta_df.iterrows():
-        if idx % 20 == 0:
+        if idx % (len(meta_df) // 10) == 0:
             print(idx,'/',meta_df.shape[0])
         offset = 1000 if patient.recon == 'fbp' else 0
         img = load_mhd(patient.file) - offset
         if img.ndim == 2: img = img[None, ...]
-        
         gt = load_mhd(get_ground_truth(patient.file)) - 1000
         
         if patient.phantom in ['uniform', 'MITA-LCD']:
             phantom_diameter_px = get_circle_diameter(gt)
-            if not roi_diameter: roi_diameter = 0.4 if patient.phantom == 'uniform' else 0.3
-            circle_selection_diameter_px = roi_diameter*phantom_diameter_px # iec standard suggests centred circle ROI 40% of phantom diameter 
+            circle_selection_diameter_px = roi_diameter[patient.phantom]*phantom_diameter_px # iec standard suggests centred circle ROI 40% of phantom diameter 
             circle_selection = circle_select(gt, xy=(gt.shape[0]//2, gt.shape[1]//2), r = circle_selection_diameter_px/2)
         else:
             phantom_diameter_px = gt.shape[-1]/1.1 #assumes fov size of 110% effective diameter
-            circle_selection_diameter_px = roi_diameter*phantom_diameter_px
+            circle_selection_diameter_px = roi_diameter[patient.phantom]*phantom_diameter_px
             try:
                 circle_selection = add_random_circle_lesion(img[0], mask=((gt >= 50) & (gt < 100)), radius=circle_selection_diameter_px/2)[1].astype(bool)
             except:
@@ -325,21 +329,30 @@ def rmse(x ,y): return np.sqrt(np.mean((x.ravel()-y.ravel())**2))
 
 
 def measure_rmse_results(meta_df):
+    meta_df = meta_df.copy()
     meta_df['sim number'] = np.nan
     meta_df['rmse'] = np.nan
-
     rows_list = []
     for idx, patient in meta_df.iterrows():
-        if idx % 20 == 0:
+        if idx % (len(meta_df) // 10) == 0:
             print(idx,'/',meta_df.shape[0])
         offset = 1000 if patient.recon == 'fbp' else 0
         img = load_mhd(patient.file) - offset
-        gt = load_mhd(get_ground_truth(patient.file)) - 1000
-
         if img.ndim == 2: img = img[None, ...]
-        nsims = img.shape[0]
+        gt = load_mhd(get_ground_truth(patient.file)) - 1000
+            
         for n, o in enumerate(img):
             patient['sim number'] = n
             patient['rmse'] = rmse(o, gt)
             rows_list.append(pd.DataFrame(patient).T)
     return pd.concat(rows_list, ignore_index=True)
+
+def calculate_noise_reduction(results, measure='noise std'):
+    cols = ['effective diameter (cm)', 'recon', 'Dose [%]']
+    means = results[[*cols, measure]].groupby(cols).mean()
+    noise_reductions = []
+    for idx, row in results.iterrows():
+        fbp_noise = means[measure][row['effective diameter (cm)'], 'fbp', row['Dose [%]']]
+        noise_reductions.append(noise_reduction(fbp_noise, row[measure]))
+    results[f'{measure} reduction [%]'] = noise_reductions
+    return results
