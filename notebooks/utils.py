@@ -54,8 +54,18 @@ def get_ground_truth(fname):
     gt_file = 'noise_free.mhd' if fname.stem.startswith('signal') else 'true.mhd'
     return Path(fname).parents[2] / gt_file
 
+def center_crop(img):
+    diam = 2*np.sqrt(np.sum(img > img.mean())/np.pi)
+    buffer = int((img.shape[0]-diam)//2)
+    return img[buffer:img.shape[0]-buffer, :]
+
+def center_crop_like(other, ref):
+    diam = 2*np.sqrt(np.sum(ref > ref.mean())/np.pi)
+    buffer = int((ref.shape[0]-diam)//2)
+    return other[buffer:ref.shape[0]-buffer, :]
+
 def make_montage(meta_df:pd.DataFrame, dose:int=25, diameters:list=[35.0, 11.2], recons:list = ['fbp', 'RED-CNN', 'RED-CNN augmented'],
-                 phantom:str = 'MITA-LCD', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256),  wwwl = (80, 0)):
+                 phantom:str = 'MITA-LCD', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256),  wwwl = (80, 0), crop_to_fit=True):
     """
     make image montage based on given argument parameters. Recons are plotted horizontally along the x axis while different diameters are plotted on y
     :Parameters:
@@ -83,26 +93,31 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, diameters:list=[35.0, 11.2],
             offset = 1000 if recon == 'fbp' else 0
             filt = (meta_df['effective diameter (cm)'] == diameter) & (meta_df['Dose [%]'] == dose) & (meta_df['phantom']==phantom)
             mhd_file = meta_df[(meta_df.recon == recon) & filt].file.item()
-            recon_imgs.append(load_mhd(mhd_file).squeeze()[idx] - offset)
-            recon_gts.append(load_mhd(get_ground_truth(mhd_file))-1000)
+            img = load_mhd(mhd_file).squeeze()[idx] - offset
+            gt = load_mhd(get_ground_truth(mhd_file))-1000
+            if crop_to_fit:
+                gt = center_crop_like(gt, img)
+                img = center_crop(img)
+            recon_imgs.append(img)
+            recon_gts.append(gt)
         all_imgs.append(recon_imgs)
         all_gts.append(recon_gts)
 
     if phantom in ['MITA-LCD', 'uniform']:  
         phantom_diameter_px = get_circle_diameter(all_imgs[0][0])
     else:
-        phantom_diameter_px = all_imgs[0][0].shape[0]/1.1
+        phantom_diameter_px = all_imgs[0][0].shape[1]/1.1
 
     circle_selection_diameter_px = roi_diameter if isinstance(roi_diameter, int) else roi_diameter*phantom_diameter_px
-    # 
+
     if isinstance(roi_center, tuple|list):
         circle_selections = np.array([len(all_imgs[0])*[circle_select(all_imgs[0][0], roi_center, r = circle_selection_diameter_px/2)] for _ in all_imgs])
     elif isinstance(roi_center, str):
         if phantom not in ['anthropomorphic']: raise ValueError(f'str roi center {roi_center} not available for phantom type {phantom}, consider setting `roi_center` to a tuple  e.g. (256, 256)')
         available_organs = {'liver': (50, 100)}
         if roi_center not in available_organs: raise ValueError(f'roi center {roi_center} not in {available_organs}')
-        circle_selections = np.array([len(all_imgs[0])*[add_random_circle_lesion(img[0], mask=((gt[0] >= 50) & (gt[0] < 100)), radius=circle_selection_diameter_px/2)[1].astype(bool)] for img, gt in zip(all_imgs, all_gts)])
-
+        circle_selections = [len(all_imgs[0])*[add_random_circle_lesion(img[0], mask=((gt[0] >= 50) & (gt[0] < 100)), radius=circle_selection_diameter_px/2)[1].astype(bool)] for img, gt in zip(all_imgs, all_gts)]
+        
     immatrix = np.concatenate([np.concatenate(row, axis=1) for row in all_imgs], axis=0)
     ctshow(immatrix, wwwl)
     plt.colorbar(fraction=0.015, pad=0.01, label='HU')
@@ -112,9 +127,9 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, diameters:list=[35.0, 11.2],
         for ridx, recon in enumerate(diam):
             nx, ny = recon.shape
             plt.annotate(f'mean: {recon[circle_selections[didx][ridx]].mean():2.0f} HU\nstd: {recon[circle_selections[didx][ridx]].std():2.0f} HU',
-                         (nx//2 + nx*ridx, nx//2 + ny*didx), fontsize=6, bbox=dict(boxstyle='square,pad=0.3', fc="lightblue", ec="steelblue"))
+                         (ny//2 + ny*ridx, nx//2 + nx*didx), fontsize=6, bbox=dict(boxstyle='square,pad=0.3', fc="lightblue", ec="steelblue"))
     plt.title(' | '.join(recons))
-    plt.ylabel(' mm |'.join(map(lambda o: str(o), diameters[::-1])) + ' mm')
+    plt.ylabel(' cm |'.join(map(lambda o: str(o), diameters[::-1])) + ' mm')
     
 # from https://github.com/scikit-image/scikit-image/blob/v0.21.0/skimage/draw/draw.py#L11 
 

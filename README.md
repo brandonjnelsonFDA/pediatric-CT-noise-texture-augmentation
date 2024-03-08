@@ -109,7 +109,7 @@ Method development:
 
 Evaluation Results:
 
-- [ ] Denoising efficiency
+- [X] Denoising efficiency
   - [x] noise magnitude reduction in uniform phantoms
   - [x] noise magnitude redcucion in anthropomorphic phantoms
   - [ ] noise magnitude reduction in adult patient images (no peds patient images)

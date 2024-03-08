@@ -5,15 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "Python Debugger: make_summary.py",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "/gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/CCT189_peds",
-                "--output_directory",
                 "results/02-26-2024_19-52_redcnn_remove_random_noise_level",
+                "--patch_size",
+                "64",
             ]
         },
         {

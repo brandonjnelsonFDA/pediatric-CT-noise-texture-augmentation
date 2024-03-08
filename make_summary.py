@@ -1,5 +1,5 @@
 #%%
-from pylatex import Document, Section, Subsection, Figure, SubFigure, NoEscape, Command
+from pylatex import Document, Section, Subsection, Figure, SubFigure, NoEscape, Command, Table
 from pylatex.labelref import Label
 
 from pathlib import Path
@@ -16,6 +16,7 @@ def main(args):
     doc.preamble.append(Command('title', 'Noise Texture Augmentation to Improve Generalizability of Deep Learning Denoising in Pediatric CT'))
     doc.preamble.append(Command('author', 'Brandon J. Nelson, Prabhat Kc, Andreu Badal, Lu Jiang, Rongping Zeng'))
     doc.preamble.append(Command('date', NoEscape(r'\today')))
+    doc.preamble.append(NoEscape(r'\usepackage{booktabs}'))
     doc.append(NoEscape(r'\maketitle'))
 
     diameters = [112, 151, 292]
@@ -101,48 +102,47 @@ To assess whether the data augmentation was able to enhance the generalizability
     with doc.create(Section('Results')):
 
         with doc.create(Subsection('Noise Reduction')):
-            doc.append("Our first assessment compares noise standard deviation measured across phantom diameter. Noise standard deviation is a simple measure of overall noise magnitude which can be useful for assessing noise reduction. However noise standard deviation does not account for noise texture which can affect the ability of a reader to detect low contrast lesions.")
-
-            doc.append(NoEscape(r"Figure \ref{fig:stdnoise} tracks the absolute noise level (measured as standard deviation) as a function of phantom diameter defined as"))
-            doc.append(NoEscape(r'$\sigma - \sigma_{FBP}$'))
-            doc.append(NoEscape(r'this means that a lower noise in the processed image will yield a more negative $\Delta std$'))
-            doc.append(NoEscape(r"Figure \ref{fig:noisereduction} then tracks the \emph{noise reduction} relative to FBP. Noise reduction is here defined as"))
-            doc.append(NoEscape(r'100% \times \sigma_{FBP} - \sigma)/\sigma_{FBP}'))
-            doc.append('Note that with this definition as the noise standard deviation approaches 0, the noise reduction approaches 100%.')
+            doc.append(NoEscape(r"Our first assessment compares noise reduction performance measured across phantoms effective diameter ranging from newborn pediatric patients through adult \ref{fig:anthro_patient_denoising_comp}. By using automatic exposure control with a reference FBP noise level of 48 HU for the quarter dose acquisitions, all FBP reconstructions in Fig. \ref{fig:anthro_patient_denoising_comp} have consistent noise magnitude measurements taken from liver ROIs in all three effective diameters shown (11.2, 16.9, and 34.2 cm). Following deep denoising with a RED-CNN model, a correlation with size appears, as the measured noise magnitude in liver ROIs decreases with increasing effective diameter, from 24 HU in the newborn 11.2 cm diameter XCAT down to 10 HU in the adult 34.2 cm diameter XCAT. However, this size dependence is no longer present in augmented training RED-CNN, trained on the same adult CT dataset. After denoising from the RED-CNN augmented model, all quarter dose FBP input images shown went from a measured noise magnitude of around 48 HU in the liver to 12 HU, independent of size and FOV."))
 
             with doc.create(Figure(position='h!')) as fig:
-                image_filename = results_dir/'test_patient.png'
+                image_filename = results_dir/'anthro_montage.png'
                 fig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
-                fig.add_caption('Adult patient from Low Dose Grand Challenge Dataset')
-                fig.append(Label('fig:testpatient'))
-
-            with doc.create(Figure(position='h!')) as fig:
-                with doc.create(SubFigure(
-                                    position='b',
-                                    width=NoEscape(r'0.5\linewidth'))) as subfig:
-                    image_filename = results_dir/'test_peds_patient.png'
-                    subfig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
-                    subfig.add_caption('Pediatric XCAT Patient')
-                with doc.create(SubFigure(
-                                    position='b',
-                                    width=NoEscape(r'0.5\linewidth'))) as subfig:
-                    image_filename = results_dir/'test_adult_patient.png'
-                    subfig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
-                    subfig.add_caption('Adult XCAT Patient')
-                fig.add_caption(NoEscape(r'Influence of pediatric patient on denoising performance using CT simulations of pediatric XCAT phantom.')) 
+                fig.add_caption('CT simulations of XCAT anthropomorphic phantoms of different effective diameter reconstructed with Filtered back projection (FBP) followed by denoising with different deep learning denoising models. Region of interest (ROI) measurements taken from the liver report pixel mean and standard deviation with the ROI.')
                 fig.append(Label('fig:anthro_patient_denoising_comp'))
 
-            with doc.create(Figure(position='h!')) as fig:
-                image_filename = results_dir/'std_noise.png'
-                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'\linewidth'))
-                fig.add_caption('Measured std noise across phantom sizes')
-                fig.append(Label('fig:stdnoise'))
+            doc.append(NoEscape(r"These trends are more clear when plotting measures of noise and noise reduction as a function of phantom effective diameter (Figure \ref{fig:noisereduction}). Noise is reported in two ways: 1) as noise magnitude - measured as pixel standard deviation from a circular liver ROI with diameter 20\% the patient effective diameter, and 2) as the root mean squared error (RMSE) with the ground truth phantom image, free of noise, blurring, or aliasing effects. In agreement with Fig. \ref{fig:anthro_patient_denoising_comp}, noise magnitude - measured as noise std in liver ROIs - is consistent across phantom size for both FBP and the augmented RED-CNN compared to the original RED-CNN model which is biased toward higher noise std in small effective diameter phantoms. Consistent with Nelson et al., 2023 \cite{nelsonPediatricSpecificEvaluationsDeep2023}, noise measurements of deep denoised images made in uniform water phantoms correlate with anthropomorphic phantom measurements, though anthropomorphic noise std measurements are generally lower as these anthropomorphic phantoms are more similar to the patient training data than the uniform water cylinder IQ phantoms used for bench testing."))
+
+            doc.append(NoEscape(r"Another observation from is that data augmentation act as a regularizer, yielding more consistent, generalizable performance across patient size, but at the expense of reduced maximal performance in some larger adult patients. For example, when averaged across all effective diameters augmented RED-CNN had an average noise std reduction of 70\% compared to 61\% for the base RED-CNN, but among effective diameters greater than 30 cm - corresponding to larger adult patients - the augmented RED-CNN under-performed the base RED-CNN with a noise std reduction of 73\% compared to 78\% for base RED-CNN. These additional findings are summarized in Table XX. which also shows that the performance gap in adult patients narrows when considering RMSE."))
 
             with doc.create(Figure(position='h!')) as fig:
                 image_filename = results_dir/'noise_reduction.png'
                 fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
                 fig.add_caption('Reduction in std noise as a function of phantom size')
                 fig.append(Label('fig:noisereduction'))
+
+            with doc.create(Figure(position='h!')) as fig:
+                image_filename = results_dir/'subgroup_denoising_comparison.png'
+                fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.7\linewidth'))
+                fig.add_caption('Comparison of noise reduction performance across size-based subgroups')
+                fig.append(Label('fig:subgroup_noisereduction'))
+
+            doc.append(NoEscape(r"""
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+\begin{table}[]
+\begin{tabular}{@{}lll@{}}
+\toprule
+Subgroup & Age Range & Waist Diameter Range \\ \midrule
+newborn & $\leq$ 1 mo & $\leq$ 11.5 cm \\
+infant & \textgreater 1 mo \& $\leq$ 2 yrs & \textgreater 11.5 \& $\leq$ 16.8 cm \\
+child & \textgreater 2 yrs \& $\leq$ 12 yrs & \textgreater 16.8 \& $\leq$ 23.2 cm \\
+adolescent & \textgreater 12 yrs \& \textless 21 yrs & \textgreater 23.2 \& \textless 34 cm \\
+adult & $\geq$ 22 yrs & $\geq$ 34 cm \\ \bottomrule
+\end{tabular}
+\caption{my table}
+\label{tab:my-table}
+\end{table}
+"""))
 
         with doc.create(Subsection('Noise Texture')):
 
@@ -204,6 +204,7 @@ To assess whether the data augmentation was able to enhance the generalizability
                             subfig.add_image(str(image_filename.absolute()),
                                                 width=NoEscape(r'\linewidth'))
                             subfig.add_caption(f'{dose} % dose')
+                    fig.append(Label('fig:taskperformance'))
 
                 doc.append("Now let's consider the $\Delta AUC$ to see the potential task advantage of applying the denoiser")
 
@@ -218,8 +219,18 @@ To assess whether the data augmentation was able to enhance the generalizability
                     image_filename = results_dir/'diffauc_v_diameter_hu.png'
                     fig.add_image(str(image_filename.absolute()), width=NoEscape(r'0.8\linewidth'))
                     fig.add_caption('$\Delta AUC$ as a function of phantom diameter and insert HU')
+    with doc.create(Section('Discussion')):
+        doc.append(NoEscape(r'These findings, in particular the size dependence of the RED-CNN denoiser noise reduction (Fig. \ref{fig:noisereduction}) and task performance (Fig. \ref{fig:taskperformance}) are consistent with our previous findings (Nelson et al., 2023 \cite{nelsonPediatricSpecificEvaluationsDeep2023})) but have now been expanded upon using a data augmentation-based intervention to improve pediatric performance of deep learning denoising models without requiring further pediatric training data. In this work, we have showed that by incorporating a simple data augmentation scheme (Fig. \ref{fig:schematic}b) using noise textures extracted from pediatric protocol phantom scans (Fig. \ref{fig:methods}). The resulting models have better noise reduction in terms of noise magnitude and RMSE (Fig. \ref{fig:noisereduction}), improved task-based performance (Fig. \ref{fig:taskperformance}), and noise textures with mean spatial frequencies closer to FBP (Fig. XX)'))
+
+        doc.append(NoEscape(r'This study has limitations. Due to limited availability in pediatric patient data, pediatric evaluations were limited to pediatric XCAT phantoms and protocols and simulation image quality phantoms.'))
+
+        doc.append(NoEscape(r'Future investigations include exploring different weighting schemes, currently noise textures from different sized phantoms were uniformly incorporated at a constant frequency of $\lambda$ (Fig. \ref{fig:schematic}b), but redefining $\lambda$ as a vector with different weighting values for each phantom size could allow for more fine tuning of denoising performance and texture across patient sizes to counteract known under-representation bias in a patient population or achieve more desirable noise texture characteristics by over-weighting specific frequencies.'))
     
-    doc.append(NoEscape(r'''\bibliographystyle{ieeetr}\n\bibliography{references}'''))
+    with doc.create(Section('Conclusions')):
+        doc.append('Data augmentation using noise textures extracted from pediatric-sized phantom scans were shown to yield improved denoising performance across all patient sizes.')
+
+    with doc.create(Section('References')):    
+        doc.append(NoEscape(r'''\bibliographystyle{ieeetr}\n\bibliography{references.bib}'''))
 
     doc.generate_pdf(results_dir/'summary', clean_tex=False)
 
@@ -230,3 +241,5 @@ if __name__ == '__main__':
     parser.add_argument('--patch_size', type=int, default=30, help='side length of square patches to be extracted, e.g. patch_size=30 yields 30x30 patches')
     args = parser.parse_args()
     main(args)
+
+# %%
