@@ -69,10 +69,10 @@ L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333
 
 1. [X] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline <<< current activity, when training finished work on
 2. [X] double check NPS results
-3. [ ] measure denoising efficiency across all phantom sizes similar to [iq_phantom_validation.py](https://github.com/bnel1201/Ped-ETK/blob/main/evaluation/iq_phantom_validation.py)
+3. [X] measure denoising efficiency across all phantom sizes similar to [iq_phantom_validation.py](https://github.com/bnel1201/Ped-ETK/blob/main/evaluation/iq_phantom_validation.py)
 4. [ ] build pediatric only model --> peds train/test to get upper bound
 5. [ ] try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together\
-6. [ ] add more models [https://github.com/prabhatkc/ct-recon/tree/main/Denoising/DLdenoise](Prabhat's DLdenoise repo)
+6. [ ] add more models [https://github.com/prabhatkc/ct-recon/tree/main/Denoising/DLdenoise](Prabhat's DLdenoise repo) --> *UNET in particular*
 
 Desired output directory structure:
 (anthropomorphic does this: /gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/anthropomorphic) but not CCT189 yet
@@ -82,14 +82,7 @@ phantom /
                             / dose /
                                    / recon
 
-Current structure:
-
-phantom /
-        / diameter /
-                    phantom_recon/
-                                  recon /
-                                         dose /
-                                               sa, sp
+make sure all headers have correct pixel sizes
 
 Notebook Layout
 ---------------
@@ -98,7 +91,9 @@ Ideally these notebooks will import the main code so as to prevent multiple vers
 
 Method development:
 
-- [ ]characterizing noise properties in patient data
+Consider absorbing make_noise_patches.ipynb into characterizing_noise_augmentation.ipynb to have 1 method dev notebook.
+
+- [ ] characterizing noise properties in patient data
   a. adult training data
   b. peds testing data
   c. compare noise properties in peds xcats vs adult xcats and confirm they agree with phantoms of equal sizes

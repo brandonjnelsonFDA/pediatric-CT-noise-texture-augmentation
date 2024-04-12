@@ -5,13 +5,11 @@ import urllib
 import zipfile
 from argparse import ArgumentParser
 
-# import tensorflow as tf
 import SimpleITK as sitk
 
 from denoising.networks import RED_CNN
 
 import os
-import sys
 import torch
 from collections import OrderedDict
 
@@ -34,6 +32,21 @@ cnn_denoiser = load_model('denoising/models/redcnn')
 cnn_denoiser_augmented = load_model('denoising/models/redcnn_augmented')
 
 # %%
+
+class DICOM_Denoiser():
+    '''
+    denoiser class for mhd files
+    '''
+    def __init__(self) -> None:
+        pass
+
+class MetaHeader_Denoiser():
+    '''
+    denoiser class for mhd files
+    '''
+    def __init__(self) -> None:
+        pass
+
 def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, offset=1000, batch_size=32, overwrite=True):
 
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")

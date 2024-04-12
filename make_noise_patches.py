@@ -7,6 +7,7 @@ from itertools import combinations
 from argparse import ArgumentParser
 
 import SimpleITK as sitk
+import pandas as pd
 from sklearn.feature_extraction.image import PatchExtractor
 from tqdm import tqdm
 
@@ -36,18 +37,20 @@ def make_noise_patches(noise_images, patch_size=(30, 30), max_patches=30):
 
 def make_noise_image_dict(datadir, dose=100, max_images=1000, kernel='fbp'):
     datadir = Path(datadir)
-
-    sa_file_dict={d.stem : d/f'{kernel}/dose_{dose:03d}/signal_absent/signal_absent.mhd' for d in datadir.glob('diameter*mm')}
-    print(f'generating {max_images} {kernel} noise images from the following phantom scans: {sorted(sa_file_dict.keys())}')
-    sa_image_dict = {k: load_mhd(v)-1000 for k, v in tqdm(sa_file_dict.items())}
+    meta = pd.read_csv(datadir / 'metadata.csv')
+    diameters = sorted(meta[(meta.recon==kernel) & (meta.phantom == 'uniform')]['effective diameter (cm)'].unique())
+    sa_image_dict = dict()
+    for diameter in diameters:
+        image_filename = meta[(meta.recon==kernel) & (meta.phantom == 'uniform') & (meta['Dose [%]']==dose) & (meta['effective diameter (cm)'] == diameter)].file.item()
+        sa_image_dict[diameter] = load_mhd(datadir/image_filename)-1000
     noise_image_dict = {k: make_noise_images(v, max_images=max_images) for k, v in sa_image_dict.items()}
     return noise_image_dict
 
 
-def prep_patches(datadir, dose=100, patch_size=(30,30)):
-    noise_image_dict = make_noise_image_dict(datadir, dose=dose)
+def prep_patches(datadir, dose=100, patch_size=(30,30), patches_per_image=30, max_images=1000):
+    noise_image_dict = make_noise_image_dict(datadir, dose=dose, max_images=max_images)
     print('extracting noise patches...')
-    noise_patch_dict = {k: make_noise_patches(v, patch_size) for k, v in tqdm(noise_image_dict.items())}
+    noise_patch_dict = {k: make_noise_patches(v, patch_size, max_patches=patches_per_image) for k, v in tqdm(noise_image_dict.items())}
     return noise_patch_dict
 
 

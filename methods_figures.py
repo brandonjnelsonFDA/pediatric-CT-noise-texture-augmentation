@@ -186,7 +186,7 @@ Textures Average NPS''')
     f.savefig(fname, dpi=600, bbox_inches='tight')
 
 
-def make_schematic(results_dir):
+def make_schematic(results_dir, ext='.png'):
     'http://magjac.com/graphviz-visual-editor/'
     dot_string = """digraph {
         fontname="Helvetica,Arial,sans-serif"
@@ -212,7 +212,10 @@ def make_schematic(results_dir):
     }"""
 
     graphs = pydot.graph_from_dot_data(dot_string)
-    graphs[0].write_png(Path(results_dir) / 'standard_training_schematic.png') #<-- requires graphviz (`sudo apt get install graphviz`` or `conda install -c anaconda graphviz``)
+    if ext == '.png':
+        graphs[0].write_png(Path(results_dir) / f'standard_training_schematic.png') #<-- requires graphviz (`sudo apt get install graphviz`` or `conda install -c anaconda graphviz``)
+    else:
+        graphs[0].write_pdf(Path(results_dir) / f'standard_training_schematic.pdf') #<-- requires graphviz (`sudo apt get install graphviz`` or `conda install -c anaconda graphviz``)
 
     dot_string = r"""digraph {
         fontname="Helvetica,Arial,sans-serif"
@@ -244,7 +247,10 @@ def make_schematic(results_dir):
 
     """
     graphs = pydot.graph_from_dot_data(dot_string)
-    graphs[0].write_png(Path(results_dir) / 'augmented_training_schematic.png')
+    if ext == '.png':
+        graphs[0].write_png(Path(results_dir) / 'augmented_training_schematic.png')
+    else:
+        graphs[0].write_pdf(Path(results_dir) / 'augmented_training_schematic.pdf')
 
 def main(args):
     characterize_noise_texture(datadir=args.base_directory, results_dir=args.output_directory, patch_size=args.patch_size, max_images=args.max_images, kernel=args.kernel)

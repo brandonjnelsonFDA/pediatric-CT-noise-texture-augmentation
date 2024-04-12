@@ -10,5 +10,8 @@ noise_patches
 results
 logs
 notebooks/.ipynb_checkpoints
+notebooks/02 Evaluation Results/.ipynb_checkpoints
+notebooks/02 Evaluation Results/*.png
+
 denoising/save
 *.pkl

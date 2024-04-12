@@ -87,11 +87,11 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, diameters:list=[35.0, 11.2],
     for diameter in diameters:
         recon_imgs = []
         recon_gts = []
-        available_diameters = sorted(meta_df['effective diameter (cm)'].unique())
+        available_diameters = sorted(meta_df['effective diameter [cm]'].unique())
         if diameter not in available_diameters: raise ValueError(f'diameter {diameter} not in {available_diameters}')
         for recon in recons:
             offset = 1000 if recon == 'fbp' else 0
-            filt = (meta_df['effective diameter (cm)'] == diameter) & (meta_df['Dose [%]'] == dose) & (meta_df['phantom']==phantom)
+            filt = (meta_df['effective diameter [cm]'] == diameter) & (meta_df['Dose [%]'] == dose) & (meta_df['phantom']==phantom)
             mhd_file = meta_df[(meta_df.recon == recon) & filt].file.item()
             img = load_mhd(mhd_file).squeeze()[idx] - offset
             gt = load_mhd(get_ground_truth(mhd_file))-1000
@@ -371,3 +371,52 @@ def calculate_noise_reduction(results, measure='noise std'):
         noise_reductions.append(noise_reduction(fbp_noise, row[measure]))
     results[f'{measure} reduction [%]'] = noise_reductions
     return results
+
+def calculate_task_improvement(results, measure='auc'):
+    means = df.groupby(['effective diameter [cm]', 'recon', 'contrast [HU]', 'Dose [%]', 'observer'])['auc'].mean()
+    noise_reductions = []
+    for idx, row in results[results['experiment'] == 'task performance'].iterrows():
+        fbp_noise = means[row['effective diameter [cm]'], 'fbp',row['contrast [HU]'], row['Dose [%]'], row['observer']]
+        noise_reductions.append(row[measure] - fbp_noise)
+    results.loc[results['experiment'] == 'task performance', f'delta {measure}'] = noise_reductions
+    return results
+
+def age_to_eff_diameter(age):
+    # https://www.aapm.org/pubs/reports/rpt_204.pdf
+    x = age
+    a = 18.788598
+    b = 0.19486455
+    c = -1.060056
+    d = -7.6244784
+    y = a + b*x**1.5 + c *x**0.5 + d*np.exp(-x)
+    eff_diam = y
+    return eff_diam
+
+adult_waist_circumferences_cm = {
+    # 20: 90.7,
+    30: 99.9,
+    40: 102.8,
+    # 50: 103.3,
+    60: 106.2,
+    70: 106.6,
+    80: 104.1
+}
+
+def diameter_range_from_subgroup(subgroup):
+    if subgroup == 'newborn': return (0, age_to_eff_diameter(1/12))
+    elif subgroup == 'infant': return (age_to_eff_diameter(1/12), age_to_eff_diameter(2))
+    elif subgroup == 'child': return (age_to_eff_diameter(2), age_to_eff_diameter(12))
+    elif subgroup == 'adolescent': return (age_to_eff_diameter(12), age_to_eff_diameter(22))
+    else: return (age_to_eff_diameter(22), 100)
+
+def pediatric_subgroup(diameter):
+    if diameter < age_to_eff_diameter(1):
+        return 'newborn'
+    elif (diameter >= age_to_eff_diameter(1)) & (diameter < age_to_eff_diameter(5)):
+        return 'infant'
+    elif (diameter >= age_to_eff_diameter(5)) & (diameter < age_to_eff_diameter(12)):
+        return 'child'
+    elif (diameter >= age_to_eff_diameter(12)) & (diameter < age_to_eff_diameter(22)):
+        return 'adolescent'
+    else:
+        return 'adult'
