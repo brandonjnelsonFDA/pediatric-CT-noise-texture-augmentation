@@ -6,6 +6,7 @@ import zipfile
 from argparse import ArgumentParser
 
 import SimpleITK as sitk
+import pydicom
 
 from denoising.networks import RED_CNN
 
@@ -33,52 +34,54 @@ cnn_denoiser_augmented = load_model('denoising/models/redcnn_augmented')
 
 # %%
 
-class DICOM_Denoiser():
-    '''
-    denoiser class for mhd files
-    '''
-    def __init__(self) -> None:
-        pass
-
-class MetaHeader_Denoiser():
-    '''
-    denoiser class for mhd files
-    '''
-    def __init__(self) -> None:
-        pass
-
-def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, offset=1000, batch_size=32, overwrite=True):
+def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, offset=1000, batch_size=32, overwrite=True, extensions = ['.mhd', '.dcm']):
 
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     output_dir = output_dir or input_dir
-    for series in input_dir.rglob('*.mhd'):
+    if isinstance(extensions, str): extensions = [extensions]
+    series_list = []
+    for ext in extensions:
+        series_list += list(input_dir.rglob('*' + ext))
+
+    for series in series_list:
         if kernel not in series.parts: continue
         if (series.stem == 'ground_truth') or (series.stem == 'noise_free') or (series.stem == 'true'):
             continue
-        input_image = sitk.ReadImage(series)
         output = Path(str(series).replace(str(input_dir), str(output_dir)))
         if output.exists() & (not overwrite):
             print(f'{output} already found, skipping {name}')
         else:
             output = Path(str(output).replace('fbp', name))
             output.parent.mkdir(parents=True, exist_ok=True)
-            x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
-            input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, 1, x, y).astype('float32') - offset
+
+            if series.suffix == '.dcm':
+                dcm_image = pydicom.dcmread(series)
+                x, y, z = dcm_image.Columns, dcm_image.Rows, 1
+                input_array = dcm_image.pixel_array.reshape(z, 1, x, y).astype('float32')
+            elif series.suffix == '.mhd':
+                input_image = sitk.ReadImage(series)
+                x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
+                input_array = sitk.GetArrayViewFromImage(input_image).reshape(z, 1, x, y).astype('float32') - offset
             if batch_size > z:
                 batch_size = z
             print(f'denoising {series} of {z} images in batches of {batch_size}')
 
             model.to(dev)
-            sp_denoised = model.predict(input_array, batch_size=batch_size, device=dev)
+            denoised = model.predict(input_array, batch_size=batch_size, device=dev)
 
-            output_image = sitk.GetImageFromArray(sp_denoised.squeeze())
-            assert((output_image.GetDepth(),output_image.GetHeight(),output_image.GetWidth())==
-                    (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
-            sitk.WriteImage(output_image, output)
-            check_output_image = sitk.ReadImage(output)
-            assert((check_output_image.GetDepth(),check_output_image.GetHeight(), check_output_image.GetWidth())==
-                    (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
+            if series.suffix == '.mhd':
+                output_image = sitk.GetImageFromArray(denoised.squeeze())
+                assert((output_image.GetDepth(),output_image.GetHeight(),output_image.GetWidth())==
+                        (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
+                sitk.WriteImage(output_image, output)
+                check_output_image = sitk.ReadImage(output)
+                assert((check_output_image.GetDepth(),check_output_image.GetHeight(), check_output_image.GetWidth())==
+                        (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
+            if series.suffix == '.dcm':
+                dcm_image.ConvolutionKernel += f' {name}'
+                dcm_image.PixelData = denoised
+                pydicom.write_file(output, dcm_image)
             print(f'{name} --> {output}')
 # %%
 
