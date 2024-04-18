@@ -58,7 +58,8 @@ def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, off
             if series.suffix == '.dcm':
                 dcm_image = pydicom.dcmread(series)
                 x, y, z = dcm_image.Columns, dcm_image.Rows, 1
-                input_array = dcm_image.pixel_array.reshape(z, 1, x, y).astype('float32')
+                input_array = dcm_image.pixel_array + int(dcm_image.RescaleIntercept)
+                input_array = input_array.reshape(z, 1, x, y).astype('float32')
             elif series.suffix == '.mhd':
                 input_image = sitk.ReadImage(series)
                 x, y, z = input_image.GetWidth(), input_image.GetHeight(), input_image.GetDepth()
@@ -80,7 +81,7 @@ def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, off
                         (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
             if series.suffix == '.dcm':
                 dcm_image.ConvolutionKernel += f' {name}'
-                dcm_image.PixelData = denoised
+                dcm_image.PixelData = (denoised - int(dcm_image.RescaleIntercept)).astype('uint16')
                 pydicom.write_file(output, dcm_image)
             print(f'{name} --> {output}')
 # %%

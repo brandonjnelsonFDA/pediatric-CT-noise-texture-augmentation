@@ -3,6 +3,8 @@ import SimpleITK as sitk
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import pydicom
+from skimage.transform import resize
 
 def ctshow(img, window='soft_tissue'):
   # Define some specific window settings here
@@ -51,68 +53,94 @@ def load_mhd(mhd_file):
 
 def get_ground_truth(fname):
     fname = Path(fname)
-    gt_file = 'noise_free.mhd' if fname.stem.startswith('signal') else 'true.mhd'
-    return Path(fname).parents[2] / gt_file
+    if fname.stem.startswith('signal'):
+        gt_file = 'noise_free.mhd'
+        return Path(fname).parents[2] / gt_file
+    if fname.stem.startswith('ACR464'):
+        gt_file = 'true.mhd'
+        return Path(fname).parents[3] / gt_file
+    else:
+        gt_file = 'true.mhd'
+        return Path(fname).parents[2] / gt_file
 
-def center_crop(img):
-    diam = 2*np.sqrt(np.sum(img > img.mean())/np.pi)
-    buffer = int((img.shape[0]-diam)//2)
-    return img[buffer:img.shape[0]-buffer, :]
+def center_crop(img, thresh=-950):
+    """square cropping where side length is based upon thresholded avergae *width*,
+    assuming the imaged object is wider (covers more columns) than tall (covers fewer rows)""" 
+    img_crop = img[:, img.mean(axis=0) > thresh]
+    img_crop = img_crop[img.mean(axis=0) > thresh, :]
+    return img_crop
 
-def center_crop_like(other, ref):
-    diam = 2*np.sqrt(np.sum(ref > ref.mean())/np.pi)
-    buffer = int((ref.shape[0]-diam)//2)
-    return other[buffer:ref.shape[0]-buffer, :]
+def center_crop_like(other, ref, thresh=-950):
+    """square cropping where side length is based upon thresholded avergae *width*,
+    assuming the imaged object is wider (covers more columns) than tall (covers fewer rows)""" 
+    img_crop = other[:, ref.mean(axis=0) > thresh]
+    img_crop = img_crop[ref.mean(axis=0) > thresh, :]
+    return img_crop
 
-def make_montage(meta_df:pd.DataFrame, dose:int=25, diameters:list=[35.0, 11.2], recons:list = ['fbp', 'RED-CNN', 'RED-CNN augmented'],
-                 phantom:str = 'MITA-LCD', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256),  wwwl = (80, 0), crop_to_fit=True):
+
+
+def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], recons:list = ['fbp', 'RED-CNN', 'RED-CNN augmented'],
+                 phantom:str='ACR464', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256), wwwl=(80, 0), crop_to_fit=True):
     """
     make image montage based on given argument parameters. Recons are plotted horizontally along the x axis while different diameters are plotted on y
     :Parameters:
         :meta_df: metadata dataframe
         :dose: dose level in percent [%]
-        :diameters: phantom effective diameter in cm
+        :fovss: FOV in cm
         :recons: list of recon kernels to display on the horizontal x-axis
-        :phantom: which image phantom is expected ['MITA-LCD', 'uniform', 'anthropomorphic'], it should be in meta_df
+        :phantom: which image phantom is expected ['MITA-LCD', 'uniform', 'anthropomorphic', 'ACR464'], it should be in meta_df
         :roi_diameter: diameter of circlular ROI. If `roi_diameter` is an **integer** then roi_diameter is in pixels e.g. 100, else if `roi_diameter` is **float** e.g. 0.3 then it is assumed a fraction of the phantom's effective diameter. Note for noise measurements IEC standard suggests centred circle ROI 40% of phantom diameter
         :roi_center: xy coordinates for roi center, or organ e.g. liver, if phantom = 'anthropomorphic'. If `str` is provided an is in the organ list `['liver']` a **random** centered roi that fits in the organ will be provided. If `roi_center` is a tuple, e.g. (256, 256) then an roi at those exact coordinates will be given
         :wwwl: window width and window level display settings, examples: soft tissues (400, 50), liver (150, 30) for recommend display settings see <https://radiopaedia.org/articles/windowing-ct?lang=us> for more information
     """
-    
-     #relative to phantom diameter (decrease below the recommended 40% diameter to fit between the inserts
-    # assert(phantom in ['MITA-LCD', 'uniform'])    
     all_imgs = []
     all_gts = []
+    circle_selections = []
     idx = 0
-    for diameter in diameters:
+    for fov in fovs:
         recon_imgs = []
         recon_gts = []
-        available_diameters = sorted(meta_df['effective diameter [cm]'].unique())
-        if diameter not in available_diameters: raise ValueError(f'diameter {diameter} not in {available_diameters}')
+        recon_selections = []
+        available_fovs = sorted(meta_df[meta_df['phantom']==phantom]['FOV [cm]'].unique())
+        if fov not in available_fovs: raise ValueError(f'FOV {fov} not in {available_fovs}')
         for recon in recons:
-            offset = 1000 if recon == 'fbp' else 0
-            filt = (meta_df['effective diameter [cm]'] == diameter) & (meta_df['Dose [%]'] == dose) & (meta_df['phantom']==phantom)
+            filt = (meta_df['FOV [cm]'] == fov) & (meta_df['Dose [%]'] == dose) & (meta_df['phantom']==phantom)
             mhd_file = meta_df[(meta_df.recon == recon) & filt].file.item()
-            img = load_mhd(mhd_file).squeeze()[idx] - offset
-            gt = load_mhd(get_ground_truth(mhd_file))-1000
+            img = load_mhd(mhd_file).squeeze()[idx]
+            gt = load_mhd(get_ground_truth(mhd_file))
+            
             if crop_to_fit:
-                gt = center_crop_like(gt, img)
-                img = center_crop(img)
+                original_shape = gt.shape
+                img = center_crop_like(img, gt)
+                gt = center_crop(gt)
+                img = resize(img, original_shape, anti_aliasing=True)
+                gt = resize(gt, original_shape, anti_aliasing=True)
+                
+            if phantom in ['MITA-LCD', 'uniform', 'ACR464']:  
+                phantom_diameter_px = get_circle_diameter(gt)
+            else:
+                phantom_diameter_px = gt.shape[1]/1.1
+            if (phantom == 'ACR464') & (fov < 20):
+                phantom_diameter_px = gt.shape[1] * 20/fov
+            
+            circle_selection_diameter_px = roi_diameter if isinstance(roi_diameter, int) else roi_diameter*phantom_diameter_px
+            if isinstance(roi_center, tuple):
+            selection = circle_select(gt, roi_center, r = circle_selection_diameter_px/2)
+            
+                if isinstance(roi_center, str):
+        if phantom not in ['anthropomorphic']: raise ValueError(f'str roi center {roi_center} not available for phantom type {phantom}, consider setting `roi_center` to a tuple  e.g. (256, 256)')
+        available_organs = {'liver': (50, 100)}
+        if roi_center not in available_organs: raise ValueError(f'roi center {roi_center} not in {available_organs}')
+            
             recon_imgs.append(img)
             recon_gts.append(gt)
+            recon_selections.append(selection)
+
         all_imgs.append(recon_imgs)
         all_gts.append(recon_gts)
+        circle_selections.append(recon_selections)
 
-    if phantom in ['MITA-LCD', 'uniform']:  
-        phantom_diameter_px = get_circle_diameter(all_imgs[0][0])
-    else:
-        phantom_diameter_px = all_imgs[0][0].shape[1]/1.1
-
-    circle_selection_diameter_px = roi_diameter if isinstance(roi_diameter, int) else roi_diameter*phantom_diameter_px
-
-    if isinstance(roi_center, tuple|list):
-        circle_selections = np.array([len(all_imgs[0])*[circle_select(all_imgs[0][0], roi_center, r = circle_selection_diameter_px/2)] for _ in all_imgs])
-    elif isinstance(roi_center, str):
+    if isinstance(roi_center, str):
         if phantom not in ['anthropomorphic']: raise ValueError(f'str roi center {roi_center} not available for phantom type {phantom}, consider setting `roi_center` to a tuple  e.g. (256, 256)')
         available_organs = {'liver': (50, 100)}
         if roi_center not in available_organs: raise ValueError(f'roi center {roi_center} not in {available_organs}')
@@ -129,7 +157,7 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, diameters:list=[35.0, 11.2],
             plt.annotate(f'mean: {recon[circle_selections[didx][ridx]].mean():2.0f} HU\nstd: {recon[circle_selections[didx][ridx]].std():2.0f} HU',
                          (ny//2 + ny*ridx, nx//2 + nx*didx), fontsize=6, bbox=dict(boxstyle='square,pad=0.3', fc="lightblue", ec="steelblue"))
     plt.title(' | '.join(recons))
-    plt.ylabel(' cm |'.join(map(lambda o: str(o), diameters[::-1])) + ' mm')
+    plt.ylabel(' cm |'.join(map(lambda o: str(round(o)), fovs[::-1])) + ' cm')
     
 # from https://github.com/scikit-image/scikit-image/blob/v0.21.0/skimage/draw/draw.py#L11 
 
@@ -305,7 +333,7 @@ def measure_roi_std_results(meta_df, roi_diameter=None):
     meta_df = meta_df.copy()
     meta_df['sim number'] = np.nan
     meta_df['noise std'] = np.nan
-    default_diameters = {'uniform': 0.4, 'MITA-LCD':0.3, 'anthropomorphic': 0.2}
+    default_diameters = {'uniform': 0.4, 'MITA-LCD':0.3, 'anthropomorphic': 0.2, 'ACR464': 0.4}
     if roi_diameter:
         if isinstance(roi_diameter, dict):
             default_diameters.update(roi_diameter)
@@ -316,12 +344,13 @@ def measure_roi_std_results(meta_df, roi_diameter=None):
     for idx, patient in meta_df.iterrows():
         if idx % (len(meta_df) // 10) == 0:
             print(idx,'/',meta_df.shape[0])
-        offset = 1000 if patient.recon == 'fbp' else 0
-        img = load_mhd(patient.file) - offset
+        img = load_mhd(patient.file)
         if img.ndim == 2: img = img[None, ...]
-        gt = load_mhd(get_ground_truth(patient.file)) - 1000
+        gt = load_mhd(get_ground_truth(patient.file))
         
-        if patient.phantom in ['uniform', 'MITA-LCD']:
+        if patient.phantom in ['uniform', 'MITA-LCD', 'ACR464']:
+            if (patient.phantom == 'ACR464') & (patient['FOV [cm]'] < 20):
+                 phantom_diameter_px = gt.shape[1] * 20/patient['FOV [cm]']
             phantom_diameter_px = get_circle_diameter(gt)
             circle_selection_diameter_px = roi_diameter[patient.phantom]*phantom_diameter_px # iec standard suggests centred circle ROI 40% of phantom diameter 
             circle_selection = circle_select(gt, xy=(gt.shape[0]//2, gt.shape[1]//2), r = circle_selection_diameter_px/2)
@@ -351,10 +380,9 @@ def measure_rmse_results(meta_df):
     for idx, patient in meta_df.iterrows():
         if idx % (len(meta_df) // 10) == 0:
             print(idx,'/',meta_df.shape[0])
-        offset = 1000 if patient.recon == 'fbp' else 0
-        img = load_mhd(patient.file) - offset
+        img = load_mhd(patient.file)
         if img.ndim == 2: img = img[None, ...]
-        gt = load_mhd(get_ground_truth(patient.file)) - 1000
+        gt = load_mhd(get_ground_truth(patient.file))
             
         for n, o in enumerate(img):
             patient['sim number'] = n
@@ -363,11 +391,11 @@ def measure_rmse_results(meta_df):
     return pd.concat(rows_list, ignore_index=True)
 
 def calculate_noise_reduction(results, measure='noise std'):
-    cols = ['effective diameter (cm)', 'recon', 'Dose [%]']
+    cols = ['phantom', 'FOV [cm]', 'recon', 'Dose [%]']
     means = results[[*cols, measure]].groupby(cols).mean()
     noise_reductions = []
     for idx, row in results.iterrows():
-        fbp_noise = means[measure][row['effective diameter (cm)'], 'fbp', row['Dose [%]']]
+        fbp_noise = means[measure][row.phantom, row['FOV [cm]'], 'fbp', row['Dose [%]']]
         noise_reductions.append(noise_reduction(fbp_noise, row[measure]))
     results[f'{measure} reduction [%]'] = noise_reductions
     return results
@@ -420,3 +448,206 @@ def pediatric_subgroup(diameter):
         return 'adolescent'
     else:
         return 'adult'
+
+def load_dicom(dcm_file):
+    dcm = pydicom.dcmread(dcm_file)
+    return (dcm.pixel_array + int(dcm.RescaleIntercept)).astype(float)
+    
+def convert_dicom_to_metaheader(metadata, phantom='ACR464'):
+    names = []
+    diameters = []
+    fovs = []
+    doses = []
+    ctdivol = []
+    recons = []
+    kernels = []
+    phantoms = []
+    slices = []
+    repeats = []
+    files = []
+
+    for name in metadata['Name'].unique():
+        scan_df = metadata[metadata['Name'] == name]
+        for diameter in scan_df['effective diameter (cm)'].unique():
+            for dose in scan_df['Dose [%]'].unique():
+                for fov in scan_df['FOV (cm)'].unique():
+                    for kernel in scan_df['kernel'].unique():
+                        for recon in scan_df['recon'].unique():
+                            output_dir = base_dir / phantom / f'diameter{int(diameter*10):d}mm' / f'fov{int(fov*10)}mm' / f'dose_{dose:03d}' / kernel / recon
+
+                            repeat = 0 if (name.startswith('ACR464 High') | name.startswith('pediatric_chest_phantom High')) else int(name.split('  ')[0].split('MAs')[1].split(' ')[0]) - 1
+                            patient = scan_df[(scan_df['Dose [%]']==dose) &
+                                               (scan_df['phantom'] == phantom) &
+                                               (scan_df['FOV (cm)'] == fov) &
+                                               (scan_df['recon'] == recon) &
+                                               (scan_df['kernel'] == kernel) &
+                                               (scan_df['phantom'] == 'ACR464') &
+                                               (scan_df['effective diameter (cm)'] == diameter) &
+                                               (scan_df['Name'] == name) &
+                                               ((scan_df['slice'] > 159) & (scan_df['slice'] < 186))]
+                            if len(patient) == 0: continue
+                            assert(len(patient.Name.unique())== 1)
+                            assert(len(patient) == 186-159-1)
+                            output_dir.mkdir(exist_ok=True, parents=True)
+                            # print(len(patient.file))
+                            vol = np.array([load_dicom(data_dir / dcm_file) for dcm_file in patient.file])
+                            img = sitk.GetImageFromArray(vol)
+                            fname = output_dir / f'{name}.mhd'
+                            if repeat == 1: print(f'saving to: {fname}')
+                            sitk.WriteImage(img, fname)
+
+                            names.append(name)
+                            diameters.append(diameter)
+                            fovs.append(fov)
+                            doses.append(dose)
+                            recons.append(recon)
+                            kernels.append(kernel)
+                            phantoms.append(phantom)
+                            repeats.append(repeat)
+                            files.append(fname.relative_to(base_dir / phantom))
+
+    preprocessed_metadata = pd.DataFrame({'Name': names,
+                                          'effective diameter (cm)': diameters, 
+                                          'FOV (cm)': fovs,
+                                          'Dose [%]': doses,
+                                          'recon': recons,
+                                          'kernel': kernels,
+                                          'phantom': phantoms,
+                                          'repeat': repeats, 
+                                          'file': files})
+    return preprocessed_metadata
+
+def concatenate_files_to_volumes(preprocessed_metadata):
+    for fov in preprocessed_metadata['FOV (cm)'].unique():
+        for dose in preprocessed_metadata['Dose [%]'].unique():
+            for kernel in preprocessed_metadata['kernel'].unique():
+                for recon in preprocessed_metadata['recon'].unique():
+                    patient = preprocessed_metadata[(preprocessed_metadata['FOV (cm)'] == fov) &
+                                                    (preprocessed_metadata['Dose [%]'] == dose) &
+                                                    (preprocessed_metadata['recon'] == recon) &
+                                                    (preprocessed_metadata['kernel'] == kernel)]
+                    vol = np.concatenate([load_mhd(base_dir / phantom / f) for f in patient.file], axis=0)
+                    img = sitk.GetImageFromArray(vol)
+                    [os.remove(base_dir / phantom / f) for f in patient.file]
+                    [os.remove(base_dir / phantom / f.parent / f'{f.stem}.raw') for f in patient.file]
+                    fname = base_dir / phantom / patient.file.iloc[0]
+                    print(fname.relative_to(base_dir))
+                    sitk.WriteImage(img, fname)
+    preprocessed_metadata = preprocessed_metadata[preprocessed_metadata.repeat==0].copy()
+    preprocessed_metadata.pop('repeat')
+    return preprocessed_metadata
+
+# https://radiopaedia.org/articles/windowing-ct?lang=us
+display_settings = {
+    'brain': (80, 40),
+    'subdural': (300, 100),
+    'stroke': (40, 40),
+    'temporal bones': (2800, 600),
+    'soft tissues': (400, 50),
+    'lung': (1500, -600),
+    'liver': (150, 30),
+}
+
+def browse_studies(metadata, phantom='ACR464', fov=25, dose=100, recon='fbp', kernel='Qr43', repeat=0, display='soft tissues', slice_idx=0):
+    patient = metadata[(metadata['Dose [%]']==dose) &
+                       (metadata['phantom'] == phantom) &
+                       (metadata['FOV (cm)']==fov) &
+                       (metadata['recon'] == recon) &
+                       (metadata['kernel'] == kernel) &
+                       (metadata['repeat']==repeat) &
+                       (metadata['slice']==slice_idx)]
+    dcm_file = patient.file.item()
+    dcm = pydicom.dcmread(dcm_file)
+    img = dcm.pixel_array + int(dcm.RescaleIntercept)
+    
+    ww, wl = display_settings[display]
+    minn = wl - ww/2
+    maxx = wl + ww/2
+    plt.figure()
+    plt.imshow(img, cmap='gray', vmin=minn, vmax=maxx)
+    plt.colorbar(label=f'HU | {display} [ww: {ww}, wl: {wl}]')
+    plt.title(patient['Name'].item())
+
+from ipywidgets import interact, IntSlider
+
+def study_viewer(metadata): 
+    
+    viewer = lambda **kwargs: browse_studies(metadata, **kwargs)
+
+    slices = metadata['slice'].unique()
+    interact(viewer,
+             phantom=metadata.phantom.unique(),
+             dose=sorted(metadata['Dose [%]'].unique(), reverse=True),
+             fov=sorted(metadata['FOV (cm)'].unique()),
+             recon=metadata['recon'].unique(),
+             kernel=metadata['kernel'].unique(),
+             repeat=metadata['repeat'].unique(),
+             display=display_settings.keys(),
+             slice_idx=IntSlider(value=slices[len(slices)//2], min=min(slices), max=max(slices)))
+    
+def make_metadata(data_dir):
+    names = []
+    diameters = []
+    fovs = []
+    doses = []
+    ctdivol = []
+    recons = []
+    kernels = []
+    phantoms = []
+    slices = []
+    repeats = []
+    files = []
+
+    dcm_files = sorted(list(data_dir.rglob('*.dcm')))
+
+    for dcm_file in dcm_files:
+        rel_path = dcm_file.relative_to(data_dir)
+        recon, phantom, dose_kernel_fov, fname = rel_path.parts
+        names.append(phantom + ' ' + dose_kernel_fov.replace('  1.0  ', '_').replace('_', ' ') + f' {recon}')
+        diameter = 20.0 if (phantom == 'ACR464') else 27.2
+        diameters.append(diameter)
+        fovs.append(float(dose_kernel_fov.split('_')[1].split('mm')[0]) / 10)
+
+        if dose_kernel_fov.startswith('High'):
+            dose = 200
+        elif dose_kernel_fov.startswith('Full'):
+            dose = 100
+        elif dose_kernel_fov.startswith('Quarter'):
+            dose = 25
+        doses.append(dose)
+        recons.append(recon)
+        kernels.append(dose_kernel_fov.split('1.0  ')[1].split('_')[0])
+        phantoms.append(phantom)
+        repeat = 0 if dose_kernel_fov.startswith('High') else int(dose_kernel_fov.split('  ')[0].split('MAs')[1]) - 1
+        repeats.append(repeat)
+        files.append(rel_path)
+
+    metadata = pd.DataFrame({'Name': names,
+                             'effective diameter (cm)': diameters, 
+                             'FOV (cm)': fovs,
+                             'Dose [%]': doses,
+                             'recon': recons,
+                             'kernel': kernels,
+                             'phantom': phantoms,
+                             'repeat': repeats, 
+                             'file': files})
+    slices = []
+    for name in metadata['Name'].unique():
+        slices += list(range(len(metadata[(metadata['Name']==name)])))
+    metadata['slice'] = slices
+    metadata['simulated'] = False
+    return metadata
+
+def estimate_ground_truth(preprocessed_metadata):
+    for fov in preprocessed_metadata['FOV (cm)'].unique():
+        patient = preprocessed_metadata[(preprocessed_metadata['kernel'] == 'Qr43') &
+                                        (preprocessed_metadata['Dose [%]'] == 200) &
+                                        (preprocessed_metadata['recon'] == 'fbp') &
+                                        (preprocessed_metadata['FOV (cm)'] == fov)]
+        fname = patient.file.item()
+        vol = load_mhd(base_dir / phantom / fname)
+        gt = vol.mean(axis=0)
+        img = sitk.GetImageFromArray(gt)
+        outfile = base_dir / phantom/ fname.parents[3] / 'true.mhd'
+        print(outfile)
+        sitk.WriteImage(img, outfile)
