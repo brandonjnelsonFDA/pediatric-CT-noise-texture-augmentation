@@ -76,11 +76,14 @@ L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333
 
 Desired output directory structure:
 (anthropomorphic does this: /gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/anthropomorphic) but not CCT189 yet
+
+```directory
 phantom /
         / diameter /
                     / sa, sp
                             / dose /
                                    / recon
+```
 
 make sure all headers have correct pixel sizes
 
@@ -101,6 +104,7 @@ Consider absorbing make_noise_patches.ipynb into characterizing_noise_augmentati
   a. inspecting phantom scans and noise images
   b. patch generation
   c. comparing patch noise properties with adult training and pediatric testing data
+- [ ] physical scan validation
 
 Evaluation Results:
 

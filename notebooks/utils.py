@@ -77,7 +77,7 @@ def center_crop_like(other, ref, thresh=-950):
     img_crop = img_crop[ref.mean(axis=0) > thresh, :]
     return img_crop
 
-
+def wwwl_to_minmax(wwwl:tuple): return wwwl[1] - wwwl[0]/2, wwwl[1] + wwwl[0]/2
 
 def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], recons:list = ['fbp', 'RED-CNN', 'RED-CNN augmented'],
                  phantom:str='ACR464', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256), wwwl=(80, 0), crop_to_fit=True):
@@ -101,11 +101,28 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
         recon_imgs = []
         recon_gts = []
         recon_selections = []
-        available_fovs = sorted(meta_df[meta_df['phantom']==phantom]['FOV [cm]'].unique())
-        if fov not in available_fovs: raise ValueError(f'FOV {fov} not in {available_fovs}')
+        phantom_df =  meta_df[(meta_df.phantom==phantom)]
+        available_fovs = sorted(phantom_df['FOV [cm]'].unique())
+        if fov not in available_fovs:
+            print(f'FOV {fov} not in {available_fovs}')
+            return
+        phantom_df = phantom_df[phantom_df['FOV [cm]']==fov]
+        available_doses = sorted(phantom_df['Dose [%]'].unique())
+        if dose not in available_doses:
+            print(f'dose {dose}% not in {available_doses}')
+            return
+        phantom_df = phantom_df[phantom_df['Dose [%]']==dose]
+
+        selection = None
         for recon in recons:
-            filt = (meta_df['FOV [cm]'] == fov) & (meta_df['Dose [%]'] == dose) & (meta_df['phantom']==phantom)
-            mhd_file = meta_df[(meta_df.recon == recon) & filt].file.item()
+            nfiles = len(phantom_df[phantom_df.recon == recon])
+            if nfiles > 1:
+                print(f'{nfiles} files found, taking first')
+                mhd_file = phantom_df[phantom_df.recon == recon].iloc[0].file
+            elif nfiles == 1:
+                mhd_file = phantom_df[phantom_df.recon == recon].file.item()
+            else:
+                raise RuntimeError('No files found')
             img = load_mhd(mhd_file).squeeze()[idx]
             gt = load_mhd(get_ground_truth(mhd_file))
             
@@ -124,13 +141,14 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
                 phantom_diameter_px = gt.shape[1] * 20/fov
             
             circle_selection_diameter_px = roi_diameter if isinstance(roi_diameter, int) else roi_diameter*phantom_diameter_px
-            if isinstance(roi_center, tuple):
-            selection = circle_select(gt, roi_center, r = circle_selection_diameter_px/2)
-            
-                if isinstance(roi_center, str):
-        if phantom not in ['anthropomorphic']: raise ValueError(f'str roi center {roi_center} not available for phantom type {phantom}, consider setting `roi_center` to a tuple  e.g. (256, 256)')
-        available_organs = {'liver': (50, 100)}
-        if roi_center not in available_organs: raise ValueError(f'roi center {roi_center} not in {available_organs}')
+            if isinstance(roi_center, tuple | list):
+                selection = circle_select(gt, roi_center, r = circle_selection_diameter_px/2)
+            elif isinstance(roi_center, str):
+                available_organs = display_settings
+                if roi_center not in available_organs: raise ValueError(f'roi center {roi_center} not in {available_organs}')
+                hu_min, hu_max = wwwl_to_minmax(available_organs[roi_center])
+                if selection is None:
+                    selection = add_random_circle_lesion(gt, mask=((gt >= hu_min) & (gt < hu_max)), radius=circle_selection_diameter_px/2)[1].astype(bool)
             
             recon_imgs.append(img)
             recon_gts.append(gt)
@@ -139,14 +157,12 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
         all_imgs.append(recon_imgs)
         all_gts.append(recon_gts)
         circle_selections.append(recon_selections)
-
-    if isinstance(roi_center, str):
-        if phantom not in ['anthropomorphic']: raise ValueError(f'str roi center {roi_center} not available for phantom type {phantom}, consider setting `roi_center` to a tuple  e.g. (256, 256)')
-        available_organs = {'liver': (50, 100)}
-        if roi_center not in available_organs: raise ValueError(f'roi center {roi_center} not in {available_organs}')
-        circle_selections = [len(all_imgs[0])*[add_random_circle_lesion(img[0], mask=((gt[0] >= 50) & (gt[0] < 100)), radius=circle_selection_diameter_px/2)[1].astype(bool)] for img, gt in zip(all_imgs, all_gts)]
-        
+    
     immatrix = np.concatenate([np.concatenate(row, axis=1) for row in all_imgs], axis=0)
+    if isinstance(wwwl, str):
+        if wwwl not in display_settings:
+            raise ValueError(f'{wwwl} not in {display_settings}')
+        wwwl = display_settings[wwwl]
     ctshow(immatrix, wwwl)
     plt.colorbar(fraction=0.015, pad=0.01, label='HU')
     immatrix = np.concatenate([np.concatenate(row, axis=1) for row in circle_selections], axis=0)
@@ -571,9 +587,7 @@ def browse_studies(metadata, phantom='ACR464', fov=25, dose=100, recon='fbp', ke
 from ipywidgets import interact, IntSlider
 
 def study_viewer(metadata): 
-    
     viewer = lambda **kwargs: browse_studies(metadata, **kwargs)
-
     slices = metadata['slice'].unique()
     interact(viewer,
              phantom=metadata.phantom.unique(),
