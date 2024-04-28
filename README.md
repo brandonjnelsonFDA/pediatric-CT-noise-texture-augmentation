@@ -104,7 +104,7 @@ Consider absorbing make_noise_patches.ipynb into characterizing_noise_augmentati
   a. inspecting phantom scans and noise images
   b. patch generation
   c. comparing patch noise properties with adult training and pediatric testing data
-- [ ] physical scan validation
+- [x] physical scan validation
 
 Evaluation Results:
 
