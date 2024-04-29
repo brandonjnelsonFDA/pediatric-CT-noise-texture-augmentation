@@ -34,7 +34,7 @@ cnn_denoiser_augmented = load_model('denoising/models/redcnn_augmented')
 
 # %%
 
-def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, offset=1000, batch_size=32, overwrite=True, extensions = ['.mhd', '.dcm']):
+def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, offset=0, batch_size=32, overwrite=True, extensions = ['.mhd', '.dcm']):
 
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -75,6 +75,7 @@ def denoise(input_dir, output_dir=None, kernel='fbp', model=None, name=None, off
                 output_image = sitk.GetImageFromArray(denoised.squeeze())
                 assert((output_image.GetDepth(),output_image.GetHeight(),output_image.GetWidth())==
                         (input_image.GetDepth(), input_image.GetHeight(), input_image.GetWidth()))
+                output_image.SetSpacing(input_image.GetSpacing())
                 sitk.WriteImage(output_image, output)
                 check_output_image = sitk.ReadImage(output)
                 assert((check_output_image.GetDepth(),check_output_image.GetHeight(), check_output_image.GetWidth())==
