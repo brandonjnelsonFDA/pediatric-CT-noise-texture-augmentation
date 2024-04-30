@@ -96,11 +96,11 @@ Method development:
 
 Consider absorbing make_noise_patches.ipynb into characterizing_noise_augmentation.ipynb to have 1 method dev notebook.
 
-- [ ] characterizing noise properties in patient data
+- [X] characterizing noise properties in patient data
   a. adult training data
   b. peds testing data
   c. compare noise properties in peds xcats vs adult xcats and confirm they agree with phantoms of equal sizes
-- [ ] augmentation development
+- [X] augmentation development
   a. inspecting phantom scans and noise images
   b. patch generation
   c. comparing patch noise properties with adult training and pediatric testing data
@@ -117,8 +117,8 @@ Evaluation Results:
   
 - [ ] Sharpness preservation
  a. MTF plots
-- [X] Noise texture preservation
+- [ ] Noise texture preservation
  a. Uniform phantom images and noise difference images
- b. NPS plots
-- [ ] Task performance
+ b. NPS plots before and after denoising
+- [X] Task performance
  a. low contrast detectability
