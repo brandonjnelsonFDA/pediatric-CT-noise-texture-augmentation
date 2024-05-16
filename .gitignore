@@ -9,7 +9,7 @@ noise_patches
 *.pyc
 results
 logs
-notebooks/.ipynb_checkpoints
+*/.ipynb_checkpoints
 notebooks/02 Evaluation Results/.ipynb_checkpoints
 notebooks/02 Evaluation Results/*.png
 

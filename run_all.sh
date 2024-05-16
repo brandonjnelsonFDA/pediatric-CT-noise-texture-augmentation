@@ -25,11 +25,11 @@ python make_noise_patches.py --data_path $phantom_directory \
 
 ## Model Training
 # augmented
-python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Ma/gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_filesyo_LDGC/images \
+python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/images \
                          --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \
                          --load_mode=1 \
                          --save_path ~/Dev/PediatricCTSizeAugmentation/denoising/models/redcnn_augmented \
-                         --augment=1
+                         --augment=0.65
 # non-augmented
 python denoising/main.py --data_path /gpfs_projects/brandon.nelson/Mayo_LDGC/images \
                          --saved_path /gpfs_projects/brandon.nelson/Mayo_LDGC/numpy_files \

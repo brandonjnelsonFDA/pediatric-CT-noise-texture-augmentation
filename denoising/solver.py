@@ -79,11 +79,11 @@ class Solver(object):
             self.noise_patches = torch.tensor(np.concatenate(list(equal_hist_patches.values())).astype('int16'), device=self.device)
             print('noise patch loading complete.')
 
-    def augment(self, image_label, aug_thresh=0.65):
+    def augment(self, image_label, aug_thresh=0.35):
         image, label = image_label
         noise_patch = self.noise_patches[torch.randperm(len(image))].reshape_as(image)
         noise_lambda = 1 # torch.rand([1])[0].item() # adds a random amount of noise, consider ablating to see affect with and without this (seems similar to the noise level augmentation which was generally beneficial whereas having it off would be just augmenting with a single noise level (equal to quarter dose but with different texture))
-        add_noise = torch.rand([1])[0].item() > aug_thresh #from 0.5
+        add_noise = torch.rand([1])[0].item() < aug_thresh #from 0.5
 
         if add_noise:
             image = label + noise_lambda*noise_patch
@@ -143,7 +143,7 @@ class Solver(object):
         plt.close()
 
 
-    def train(self, augment=False):
+    def train(self, augment=0):
         train_losses = []
         total_iters = 0
         start_time = time.time()
@@ -161,8 +161,8 @@ class Solver(object):
                     x = x.view(-1, 1, self.patch_size, self.patch_size)
                     y = y.view(-1, 1, self.patch_size, self.patch_size)
 
-                if augment:
-                    x, y = self.augment((x, y))
+                if augment: #conditional likely uneeded if lambda = 0, same effect
+                    x, y = self.augment((x, y), augment)
 
                 pred = self.REDCNN(x)
                 loss = self.criterion(pred, y)

@@ -70,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument('--multi_gpu', type=bool, default=False)
 
     # my custom args
-    parser.add_argument('--augment', type=bool, default=False)
+    parser.add_argument('--augment', type=float, default=0.35)
 
     args = parser.parse_args()
     main(args)
