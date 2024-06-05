@@ -115,9 +115,9 @@ Evaluation Results:
   - [x] RMSE reduction in uniform phantoms
   - [x] RMSE in anthropomorphic phantoms
   
-- [ ] Sharpness preservation
+- [X] Sharpness preservation
  a. MTF plots
-- [ ] Noise texture preservation
+- [X] Noise texture preservation
  a. Uniform phantom images and noise difference images
  b. NPS plots before and after denoising
 - [X] Task performance
