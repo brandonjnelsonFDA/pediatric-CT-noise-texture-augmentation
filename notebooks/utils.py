@@ -80,7 +80,7 @@ def center_crop_like(other, ref, thresh=-950):
 def wwwl_to_minmax(wwwl:tuple): return wwwl[1] - wwwl[0]/2, wwwl[1] + wwwl[0]/2
 
 def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], recons:list = ['fbp', 'RED-CNN', 'RED-CNN augmented'],
-                 phantom:str='ACR464', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256), wwwl=(80, 0), crop_to_fit=True):
+                 phantom:str='ACR464', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256), wwwl=(80, 0), crop_to_fit=True, figure=None, fontsize=6, axis=None):
     """
     make image montage based on given argument parameters. Recons are plotted horizontally along the x axis while different diameters are plotted on y
     :Parameters:
@@ -93,6 +93,8 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
         :roi_center: xy coordinates for roi center, or organ e.g. liver, if phantom = 'anthropomorphic'. If `str` is provided an is in the organ list `['liver']` a **random** centered roi that fits in the organ will be provided. If `roi_center` is a tuple, e.g. (256, 256) then an roi at those exact coordinates will be given
         :wwwl: window width and window level display settings, examples: soft tissues (400, 50), liver (150, 30) for recommend display settings see <https://radiopaedia.org/articles/windowing-ct?lang=us> for more information
     """
+    if (axis is None) or (figure is None):
+        figure, axis = plt.subplots()
     all_imgs = []
     all_gts = []
     circle_selections = []
@@ -164,16 +166,32 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
             raise ValueError(f'{wwwl} not in {display_settings}')
         wwwl = display_settings[wwwl]
     ctshow(immatrix, wwwl)
-    plt.colorbar(fraction=0.015, pad=0.01, label='HU')
     immatrix = np.concatenate([np.concatenate(row, axis=1) for row in circle_selections], axis=0)
-    plt.imshow(immatrix, alpha=0.1, cmap='Reds')
+    axis.imshow(immatrix, alpha=0.1, cmap='Blues')
+    plt.colorbar(ax=axis, fraction=0.015, pad=0.01, label='HU')
+    ylvl = 60
     for didx, diam in enumerate(all_imgs):
         for ridx, recon in enumerate(diam):
             nx, ny = recon.shape
-            plt.annotate(f'mean: {recon[circle_selections[didx][ridx]].mean():2.0f} HU\nstd: {recon[circle_selections[didx][ridx]].std():2.0f} HU',
-                         (ny//2 + ny*ridx, nx//2 + nx*didx), fontsize=6, bbox=dict(boxstyle='square,pad=0.3', fc="lightblue", ec="steelblue"))
-    plt.title(' | '.join(recons))
-    plt.ylabel(' cm |'.join(map(lambda o: str(round(o)), fovs[::-1])) + ' cm')
+            axis.annotate(f'mean: {recon[circle_selections[didx][ridx]].mean():2.0f} HU\nstd: {recon[circle_selections[didx][ridx]].std():2.0f} HU',
+                         (ny//2 + ny*ridx, nx//2 + nx*didx), fontsize=fontsize, bbox=dict(boxstyle='square,pad=0.3', fc="lightblue", ec="steelblue"))
+
+        eff_diam_cm = meta_df[meta_df['FOV [cm]'] == fovs[didx]]['effective diameter [cm]'].iloc[0]
+        pix_size = fov/nx
+        eff_diam_px = np.ceil(eff_diam_cm/pix_size)
+        subgroup = meta_df[meta_df['effective diameter [cm]'] == eff_diam_cm]['pediatric subgroup'].iloc[0]
+        axis.annotate(f'{subgroup}\n{eff_diam_cm} cm', xy=(10, ylvl), xytext=(256, ylvl), bbox=dict(boxstyle='square,pad=0.3', fc="white", ec="black"), horizontalalignment='center', fontsize=fontsize)
+        profile = np.where(recon.mean(axis=0)>-950)[0]
+        x0, x1 = profile[0], profile[-1]
+        axis.annotate('', xy=(x0, ylvl+18), xytext=(x1, ylvl+18), arrowprops=dict(arrowstyle='<->'))
+        ylvl+=ny
+    str_lens = [len(o) for o in recons]
+    max_len = max(str_lens)
+    recon_str = ' | '.join([(max_len-len(o))//2*' '+o+(max_len-len(o))//2*' ' for o in recons])
+    axis.set_title('Recon\n'+ recon_str)
+    axis.set_ylabel('FOV\n'+' cm | '.join(map(lambda o: str(round(o)), fovs[::-1])) + ' cm')
+    # add scalebar
+    return figure, axis
     
 # from https://github.com/scikit-image/scikit-image/blob/v0.21.0/skimage/draw/draw.py#L11 
 
@@ -505,7 +523,6 @@ def convert_dicom_to_metaheader(metadata, phantom='ACR464'):
                             assert(len(patient.Name.unique())== 1)
                             assert(len(patient) == 186-159-1)
                             output_dir.mkdir(exist_ok=True, parents=True)
-                            # print(len(patient.file))
                             vol = np.array([load_dicom(data_dir / dcm_file) for dcm_file in patient.file])
                             img = sitk.GetImageFromArray(vol)
                             fname = output_dir / f'{name}.mhd'
