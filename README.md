@@ -1,124 +1,75 @@
+# Noise Texture Augmentation Improves Pediatric Generalizability in Deep Learning CT Denoising Models
 
-1. [X] downloading the pretrained denoising models from the [Denoising tutorial](https://colab.research.google.com/drive/1N8V56eHEx3uIWIahBvRGAorszAziyAs7#scrollTo=FxrP4SiMdmUT)
-    - might need to add a model save option
-2. [X] download the [LCD toolkit and dataset](https://github.com/DIDSR/LCD_CT)
-3. [X] Use the downloaded denoisers to process the CCT189 images
-4. [X] Use the LCD toolkit to evaluate the two models trained in the tutorial (see if VGG actually made a difference)
-5. save that tutorial as a new "advanced tutorial" for the LCD toolkit
-6. [X] next get a baseline performance of these models with PED-ETK
-7. start developing data aug and compare reevaluate comparing against previous baselines
+Running Title: *Noise Texture Augmentation for CT Denoising*
 
-- ready on [google colab](https://colab.research.google.com/drive/1aYFFunBcIK2D98qPEmMVqO98uVWepziW#scrollTo=Zt9LBQdAHfYy), need to bring here
+Adult-trained CT denoising models were shown to perform poorly in pediatric CT due to Field-of-view (FOV) differences between adult and pediatric CT protocols. This project use noise patches from pediatric protocol phantom scans to augment training with adult datasets. This technique can improve performance in smaller-pediatric patients not represented in the training dataset.
 
-![Alt text](LCD_results.png)
-These are the preliminary results for the standard LCD CT (step 4)
+## Purpose
 
-## Install
+This repository contains runable code to reproduce the figures in the article "Noise Texture Augmentation Improves Pediatric Generalizability in Deep Learning CT Denoising Models" by Nelson et al 2024.
 
-jupyterlab via port forwarding
-<https://thedatafrog.com/en/articles/remote-jupyter-notebooks/>
+The digital phantom dataset can be reproduced using [pediatricIQphantoms](https://github.com/DIDSR/pediatricIQphantoms) or downloaded directly from [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10064035)
 
-pip3 install torch torchvision torchaudio --index-url <https://download.pytorch.org/whl/cu118>
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11267694.svg)](https://doi.org/10.5281/zenodo.11267694)
 
-### Conda
+## Index
 
-conda create -n peds_aug_tensorflow --file requirements.txt -y -c simpleitk
-conda activate peds_aug_tensorflow
+Figures 1, 2 can be found in [00_characterizing_noise_augmentation.ipynb](notebooks/00_characterizing_noise_augmentation.ipynb)
 
-### Pip
+![Figure 1a](notebooks/images/for_word/traditional.png)
+*Figure 1a Traditional model training where training input patches are input to a model to make a prediction that is compared against the training target using the loss function to update the model.*
 
-## Steps
+![Figure 1b](notebooks/images/for_word/augmented.png)
+*Figure 1b In noise texture augmented training noise patches are added to the low noise training target to make new augmented inputs. While training, a proportion λ of the training data mini batch is from the augmented inputs while the remaining 1 − λ is from the original low dose training inputs.*
 
-FAQS
+![Figure 2b](notebooks/results/fig2b_noise_texture_image_comparison.png)
+*Figure 2b Subtracting the repeat scans yields size-specific noise images*
 
-Common errors:
-Octave
+Figure 3 can be found in [01_train_denoiser_with_augmentation.ipynb](notebooks/01_train_denoiser_with_augmentation.ipynb)
 
-If installing and running a fresh Octab
+![Figure 3](notebooks/results/fig3_lambda_selection.png)
+*Figure 3 Selection of  λ value from a central region of interest (ROI) standard deviation (std) measurement averaged across pediatric-sized uniform water phantom images from the validation dataset*
 
-Installing Image on Octave `pkg install -forge image`
+Figure 4, 5, 6, 9 can be found in [02_denoising efficiency.ipynb](notebooks/02_denoising_efficiency.ipynb)
 
-```
-    /bin/bash: /home/brandon.nelson/miniconda3/envs/peds_data_aug/lib/libtinfo.so.6: no version information available (required by /bin/bash)
-    /bin/bash: /home/brandon.nelson/miniconda3/envs/peds_data_aug/lib/libtinfo.so.6: no version information available (required by /bin/bash)
-    configure: error: in `/tmp/oct-6zg6LA/image-2.14.0/src':
-    configure: error: C++ compiler cannot create executables
-    See `config.log' for more details
-    checking for a sed that does not truncate output... /usr/bin/sed
-    checking for octave... /home/brandon.nelson/miniconda3/envs/peds_data_aug/bin/octave-7.3.0
-    checking for mkoctfile... /home/brandon.nelson/miniconda3/envs/peds_data_aug/bin/mkoctfile-7.3.0
-    checking whether the C++ compiler works... no
+Figure 7 can be found in [03_sharpness_preservation.ipynb](notebooks/03_sharpness_preservation.ipynb)
 
-    error: pkg: error running the configure script for image
-    error: called from
-        configure_make at line 101 column 9
-        install at line 202 column 
-```
+![Figure 7](notebooks/results/fig7_image_sharpness.png)
+*Figure 7 Image sharpness evaluated as 50% and 10% cutoff frequencies of modulation transfer function (MTF) measured from radially averaged disk measurements at different contrast levels, shown as the title of each plot. Average MTF cutoffs values are shown for each pediatric subgroup based on phantom diameter (Table 1) with error bars representing the 95% bootstrap confidence interval.*
 
-pkg: please install the Debian package "liboctave-dev" to get the mkoctfile command:
-sudo apt-get install liboctave-dev
+Figure 8 can be found in [04_task_performance.ipynb](notebooks/04_task_performance.ipynb)
 
-Installing TexLive on Linux
-<https://tug.org/texlive/quickinstall.html#running>
+![Figure 8](notebooks/results/fig8_task_performance.png)
+*Figure 8 Low contrast detectability area under the receiver operator characteristic curve (AUC) as a function of phantom diameter from quarter dose test images. Detectability is assessed using two model observers: a Laguerre-Gauss Channelized Hotelling observer (LG-CHO) and a non-prewhitening (NPW) observer. The 3 HU contrast lesion has a diameter of 10% the phantom diameter and the 14 HU diameter is 5% the phantom diameter.*
 
-## LDGC
+## Reproducing all figures
 
-L067, L096, L109, L143 (non con), L192 (con), L286, L291 (con), L310 (con), L333, L506
+### Requirements
 
-## TODO
+If running on your local machine 2 datasets are required:
 
-1. [X] focus on using open source implementation of redcnn training and then add augmentation there and evaluate with pipeline <<< current activity, when training finished work on
-2. [X] double check NPS results
-3. [X] measure denoising efficiency across all phantom sizes similar to [iq_phantom_validation.py](https://github.com/bnel1201/Ped-ETK/blob/main/evaluation/iq_phantom_validation.py)
-4. [ ] build pediatric only model --> peds train/test to get upper bound
-5. [ ] try only augmenting with specific diameters, 1 that is only newborns (112mm), one that is midrange, and only adults and see how that compares to mixing all of them together\
-6. [ ] add more models [https://github.com/prabhatkc/ct-recon/tree/main/Denoising/DLdenoise](Prabhat's DLdenoise repo) --> *UNET in particular*
+1. [pediatricIQphantoms dataset](https://zenodo.org/doi/10.5281/zenodo.10064035) which contains pediatric-sized versions of uniform water, CCT189 MITA-LCD, and CTP404 phantoms based off of of the [Catphan 600 phantom](https://www.phantomlab.com/catphan-600), this dataset is used for evaluating the deep learning denoising model and augmentation method
+2. Mayo Clinic Low Dose Grand Challenge Dataset: [https://doi.org/10.7937/9npb-2637](https://www.cancerimagingarchive.net/collection/ldct-and-projection-data/), required for training the deep learning denoising models in [01_train_denoiser_with_augmentation.ipynb](notebooks/01_train_denoiser_with_augmentation.ipynb)
+3. `git clone https://github.com/DIDSR/LCD_CT.git`, used for low contrast detectability assessments in [04_task_performance.ipynb](notebooks/04_task_performance.ipynb)
 
-Desired output directory structure:
-(anthropomorphic does this: /gpfs_projects/brandon.nelson/PediatricCTSizeDataAugmentation/anthropomorphic) but not CCT189 yet
+Run the following either all at once or line by line to run the contents of each notebook non-interactively to update/reproduce the figures in [notebooks/results](notebooks/results)
 
-```directory
-phantom /
-        / diameter /
-                    / sa, sp
-                            / dose /
-                                   / recon
+```bash
+  jupyter nbconvert notebooks/00_characterizing_noise_augmentation.ipynb --execute --to notebook --inplace
+  jupyter nbconvert notebooks/01_train_denoiser_with_augmentation.ipynb --execute --to notebook --inplace
+  jupyter nbconvert notebooks/02_denoising_efficiency.ipynb --execute --to notebook --inplace
+  jupyter nbconvert notebooks/03_sharpness_preservation.ipynb --execute --to notebook --inplace
+  jupyter nbconvert notebooks/04_task_performance.ipynb --execute --to notebook --inplace
 ```
 
-make sure all headers have correct pixel sizes
+If you are having issues, please let us know.
+[brandon.nelson@fda.hhs.gov](mailto:brandon.nelson@fda.hhs.gov); [rongping.zeng@fda.hhs.gov](rongping.zeng@fda.hhs.gov)
 
-Notebook Layout
----------------
+## Disclaimer
 
-Ideally these notebooks will import the main code so as to prevent multiple versions from floating around and will correspond to different sections of the paper
+This software and documentation (the "Software") were developed at the Food and Drug Administration (FDA) by employees of the Federal Government in the course of their official duties. Pursuant to Title 17, Section 105 of the United States Code, this work is not subject to copyright protection and is in the public domain. Permission is hereby granted, free of charge, to any person obtaining a copy of the Software, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Software or derivatives, and to permit persons to whom the Software is furnished to do so. FDA assumes no responsibility whatsoever for use by other parties of the Software, its source code, documentation or compiled executables, and makes no guarantees, expressed or implied, about its quality, reliability, or any other characteristic. Further, use of this code in no way implies endorsement by the FDA or confers any advantage in regulatory decisions. Although this software can be redistributed and/or modified freely, we ask that any derivative works bear some notice that they are derived from it, and any modified versions bear some notice that they have been modified.
 
-Method development:
+## Additional Resources
 
-Consider absorbing make_noise_patches.ipynb into characterizing_noise_augmentation.ipynb to have 1 method dev notebook.
-
-- [X] characterizing noise properties in patient data
-  a. adult training data
-  b. peds testing data
-  c. compare noise properties in peds xcats vs adult xcats and confirm they agree with phantoms of equal sizes
-- [X] augmentation development
-  a. inspecting phantom scans and noise images
-  b. patch generation
-  c. comparing patch noise properties with adult training and pediatric testing data
-- [x] physical scan validation
-
-Evaluation Results:
-
-- [X] Denoising efficiency
-  - [x] noise magnitude reduction in uniform phantoms
-  - [x] noise magnitude redcucion in anthropomorphic phantoms
-  - [ ] noise magnitude reduction in adult patient images (no peds patient images)
-  - [x] RMSE reduction in uniform phantoms
-  - [x] RMSE in anthropomorphic phantoms
-  
-- [X] Sharpness preservation
- a. MTF plots
-- [X] Noise texture preservation
- a. Uniform phantom images and noise difference images
- b. NPS plots before and after denoising
-- [X] Task performance
- a. low contrast detectability
+- https://github.com/DIDSR/pediatricIQphantoms
+- https://github.com/DIDSR/LCD_CT

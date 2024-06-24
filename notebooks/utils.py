@@ -6,6 +6,8 @@ from pathlib import Path
 import pydicom
 from skimage.transform import resize
 
+from PIL import Image
+
 def ctshow(img, window='soft_tissue'):
   # Define some specific window settings here
   if window == 'soft_tissue':
@@ -682,3 +684,19 @@ def estimate_ground_truth(preprocessed_metadata):
         outfile = base_dir / phantom/ fname.parents[3] / 'true.mhd'
         print(outfile)
         sitk.WriteImage(img, outfile)
+
+def pil_grid(images, max_horiz=np.iinfo(int).max):
+    n_images = len(images)
+    n_horiz = min(n_images, max_horiz)
+    h_sizes, v_sizes = [0] * n_horiz, [0] * (n_images // n_horiz)
+    for i, im in enumerate(images):
+        h, v = i % n_horiz, i // n_horiz
+        h_sizes[h] = max(h_sizes[h], im.size[0])
+        v_sizes[v] = max(v_sizes[v], im.size[1])
+    h_sizes, v_sizes = np.cumsum([0] + h_sizes), np.cumsum([0] + v_sizes)
+    im_grid = Image.new('RGB', (h_sizes[-1], v_sizes[-1]), color='white')
+    for i, im in enumerate(images):
+        im_grid.paste(im, (h_sizes[i % n_horiz], v_sizes[i // n_horiz]))
+    return im_grid
+
+def normalize(image): return 1 - (image.max() - image) / (image.max() - image.min())
