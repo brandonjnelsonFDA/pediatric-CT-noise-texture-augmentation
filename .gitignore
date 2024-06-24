@@ -9,8 +9,8 @@ noise_patches
 *.pyc
 logs
 */.ipynb_checkpoints
-notebooks/02 Evaluation Results/.ipynb_checkpoints
-notebooks/02 Evaluation Results/*.png
+notebooks/02 Evaluation figures.ipynb_checkpoints
+notebooks/02 Evaluation figures*.png
 
 denoising/save
 *.pkl

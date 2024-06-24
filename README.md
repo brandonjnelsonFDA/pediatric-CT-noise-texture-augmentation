@@ -1,6 +1,6 @@
 # Noise Texture Augmentation Improves Pediatric Generalizability in Deep Learning CT Denoising Models
 
-Running Title: *Noise Texture Augmentation for CT Denoising*
+Running Title: *Pediatric CT Noise Texture Augmentation*
 
 Adult-trained CT denoising models were shown to perform poorly in pediatric CT due to Field-of-view (FOV) differences between adult and pediatric CT protocols. This project use noise patches from pediatric protocol phantom scans to augment training with adult datasets. This technique can improve performance in smaller-pediatric patients not represented in the training dataset.
 
@@ -16,30 +16,30 @@ The digital phantom dataset can be reproduced using [pediatricIQphantoms](https:
 
 Figures 1, 2 can be found in [00_characterizing_noise_augmentation.ipynb](notebooks/00_characterizing_noise_augmentation.ipynb)
 
-![Figure 1a](notebooks/images/for_word/traditional.png)
+![Figure 1a](notebooks/figures/fig1a_traditional.png)
 *Figure 1a Traditional model training where training input patches are input to a model to make a prediction that is compared against the training target using the loss function to update the model.*
 
-![Figure 1b](notebooks/images/for_word/augmented.png)
+![Figure 1b](notebooks/figures/fig1b_augmented.png)
 *Figure 1b In noise texture augmented training noise patches are added to the low noise training target to make new augmented inputs. While training, a proportion λ of the training data mini batch is from the augmented inputs while the remaining 1 − λ is from the original low dose training inputs.*
 
-![Figure 2b](notebooks/results/fig2b_noise_texture_image_comparison.png)
+![Figure 2b](notebooks/figures/fig2b_noise_texture_image_comparison.png)
 *Figure 2b Subtracting the repeat scans yields size-specific noise images*
 
 Figure 3 can be found in [01_train_denoiser_with_augmentation.ipynb](notebooks/01_train_denoiser_with_augmentation.ipynb)
 
-![Figure 3](notebooks/results/fig3_lambda_selection.png)
+![Figure 3](notebooks/figures/fig3_lambda_selection.png)
 *Figure 3 Selection of  λ value from a central region of interest (ROI) standard deviation (std) measurement averaged across pediatric-sized uniform water phantom images from the validation dataset*
 
 Figure 4, 5, 6, 9 can be found in [02_denoising efficiency.ipynb](notebooks/02_denoising_efficiency.ipynb)
 
 Figure 7 can be found in [03_sharpness_preservation.ipynb](notebooks/03_sharpness_preservation.ipynb)
 
-![Figure 7](notebooks/results/fig7_image_sharpness.png)
+![Figure 7](notebooks/figures/fig7_image_sharpness.png)
 *Figure 7 Image sharpness evaluated as 50% and 10% cutoff frequencies of modulation transfer function (MTF) measured from radially averaged disk measurements at different contrast levels, shown as the title of each plot. Average MTF cutoffs values are shown for each pediatric subgroup based on phantom diameter (Table 1) with error bars representing the 95% bootstrap confidence interval.*
 
 Figure 8 can be found in [04_task_performance.ipynb](notebooks/04_task_performance.ipynb)
 
-![Figure 8](notebooks/results/fig8_task_performance.png)
+![Figure 8](notebooks/figures/fig8_task_performance.png)
 *Figure 8 Low contrast detectability area under the receiver operator characteristic curve (AUC) as a function of phantom diameter from quarter dose test images. Detectability is assessed using two model observers: a Laguerre-Gauss Channelized Hotelling observer (LG-CHO) and a non-prewhitening (NPW) observer. The 3 HU contrast lesion has a diameter of 10% the phantom diameter and the 14 HU diameter is 5% the phantom diameter.*
 
 ## Reproducing all figures
