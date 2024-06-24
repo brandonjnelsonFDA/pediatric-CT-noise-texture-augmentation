@@ -7,7 +7,6 @@ LCD_CT*
 .data_aug*
 noise_patches
 *.pyc
-results
 logs
 */.ipynb_checkpoints
 notebooks/02 Evaluation Results/.ipynb_checkpoints
