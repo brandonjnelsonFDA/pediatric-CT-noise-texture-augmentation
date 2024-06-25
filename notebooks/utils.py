@@ -8,6 +8,13 @@ from skimage.transform import resize
 
 from PIL import Image
 
+def load_img(dcm_file):
+    dcm = pydicom.read_file(dcm_file)
+    return dcm.pixel_array + dcm.RescaleIntercept
+
+def load_vol(dcm_list:list[str|Path]):
+    return np.stack([load_img(o) for o in dcm_list])
+
 def ctshow(img, window='soft_tissue'):
   # Define some specific window settings here
   if window == 'soft_tissue':

@@ -7,44 +7,43 @@ import matplotlib.pyplot as plt
 
 from utils import center_crop, center_crop_like, load_mhd, get_ground_truth, ctshow
 
-def browse_studies(meta, phantom='anthropomorphic', diameter=16, fov=20.8, dose=100, recon='fbp', crop=False):
-    phantom_df =  meta[(meta.phantom==phantom)]
-    if diameter not in phantom_df['effective diameter [cm]'].unique():
-        print(f"diameter {diameter} not in {phantom_df['effective diameter [cm]'].unique()}")
-        return
-    phantom_df = phantom_df[(phantom_df.phantom==phantom) & (phantom_df['effective diameter [cm]']==diameter)]
+def browse_studies(metadata, phantom='CTP404', fov=12.3, dose=100, recon='fbp', kernel='D45', repeat=0, display='soft tissues'):
+    phantom_df =  metadata[(metadata.phantom==phantom) & (metadata.recon == recon)]
     available_fovs = sorted(phantom_df['FOV [cm]'].unique())
     if fov not in available_fovs:
         print(f'FOV {fov} not in {available_fovs}')
         return
-    available_doses = sorted(phantom_df['Dose [%]'].unique())
-    if dose not in available_doses:
-        print(f'dose {dose}% not in {available_doses}')
-        return
-    patient = phantom_df[(phantom_df.phantom==phantom) &
-                         (phantom_df['Dose [%]']==dose) &
-                         (phantom_df['effective diameter [cm]'] == diameter) &
-                         (phantom_df['FOV [cm]'] == fov) &
-                         (phantom_df['recon'] == recon)].iloc[0]
-    img = load_mhd(patient.file)[0]
-    gt = load_mhd(get_ground_truth(patient.file))
-    if crop:
-        img = center_crop_like(img, gt)
-        gt = center_crop(gt)
-    ctshow(np.concatenate([img, gt], axis=1))
-    plt.title(f"{patient['Dose [%]']}% dose {patient.recon} | ground truth")
-    
+    patient = phantom_df[phantom_df['FOV [cm]']==fov]
+    if (recon != 'ground truth') and (recon != 'noise free'):
+        available_doses = sorted(patient['Dose [%]'].unique())
+        if dose not in available_doses:
+            print(f'dose {dose}% not in {available_doses}')
+            return
+        patient = patient[(patient['Dose [%]']==dose) &
+                       (patient['kernel'] == kernel) &
+                       (patient['repeat']==repeat)]
+    dcm_file = patient.file.item()
+    dcm = pydicom.dcmread(dcm_file)
+    img = dcm.pixel_array + int(dcm.RescaleIntercept)
 
-def study_viewer(meta): 
-    viewer = lambda phantom='anthropmorphic', dose=100, diameter=16, fov=20.8, recon='fbp', crop=False: browse_studies(meta, phantom=phantom, dose=dose, diameter=diameter, fov=fov, recon=recon, crop=crop)
- 
+    ww, wl = display_settings[display]
+    minn = wl - ww/2
+    maxx = wl + ww/2
+    plt.figure()
+    plt.imshow(img, cmap='gray', vmin=minn, vmax=maxx)
+    plt.colorbar(label=f'HU | {display} [ww: {ww}, wl: {wl}]')
+    plt.title(patient['Name'].item())
+
+def study_viewer(metadata): 
+    viewer = lambda **kwargs: browse_studies(metadata, **kwargs)
     interact(viewer,
-             phantom=meta.phantom.unique(),
-             dose=sorted(meta['Dose [%]'].unique(), reverse=True),
-             diameter = sorted(meta['effective diameter [cm]'].unique()),
-             fov=sorted(meta['FOV [cm]'].unique()),
-             recon=meta['recon'].unique(),
-             crop=Checkbox(value=False, description='crop image'))
+             phantom=metadata.phantom.unique(),
+             dose=sorted(metadata['Dose [%]'].unique(), reverse=True),
+             fov=sorted(metadata['FOV [cm]'].unique()),
+             recon=metadata['recon'].unique(),
+             kernel=metadata['kernel'].unique(),
+             repeat=metadata['repeat'].unique(),
+             display=display_settings.keys())
 
 from scipy import interpolate, signal
 from scipy.optimize import curve_fit
