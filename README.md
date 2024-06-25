@@ -2,8 +2,6 @@
 
 Running Title: *Pediatric CT Noise Texture Augmentation*
 
-Adult-trained CT denoising models were shown to perform poorly in pediatric CT due to Field-of-view (FOV) differences between adult and pediatric CT protocols. This project use noise patches from pediatric protocol phantom scans to augment training with adult datasets. This technique can improve performance in smaller-pediatric patients not represented in the training dataset.
-
 ## Purpose
 
 This repository contains runable code to reproduce the figures in the article "Noise Texture Augmentation Improves Pediatric Generalizability in Deep Learning CT Denoising Models" by Nelson et al 2024.
@@ -11,6 +9,10 @@ This repository contains runable code to reproduce the figures in the article "N
 The digital phantom dataset can be reproduced using [pediatricIQphantoms](https://github.com/DIDSR/pediatricIQphantoms) or downloaded directly from [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10064035)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11267694.svg)](https://doi.org/10.5281/zenodo.11267694)
+
+## Abridged Abstract
+
+Adult-trained CT denoising models were shown to perform poorly in pediatric CT due to Field-of-view (FOV) differences between adult and pediatric CT protocols. This project use noise patches from pediatric protocol phantom scans to augment training with adult datasets. This technique can improve performance in smaller-pediatric patients not represented in the training dataset.
 
 ## Index
 
@@ -31,6 +33,20 @@ Figure 3 can be found in [01_train_denoiser_with_augmentation.ipynb](notebooks/0
 *Figure 3 Selection of  λ value from a central region of interest (ROI) standard deviation (std) measurement averaged across pediatric-sized uniform water phantom images from the validation dataset*
 
 Figure 4, 5, 6, 9 can be found in [02_denoising efficiency.ipynb](notebooks/02_denoising_efficiency.ipynb)
+
+![Figure 4](notebooks/figures/fig4_anthropomorphic_montage.png)
+*Figure 4 CT simulations of XCAT anthropomorphic phantoms of different effective diameter reconstructed with Filtered back projection (FBP) followed by denoising with different deep learning denoising models. Region of interest (ROI) measurements, shown as blue disk overlays, taken from the liver report pixel mean and standard deviation with the ROI.*
+
+![Figure 5](notebooks/figures/fig5_noise_reduction.png)
+*Figure 5 Denoising efficiency as a function of phantom size with body fitting reconstructed field of view (FOV). a) Noise reduction performance defined as reduction of pixel intensity standard deviation (std) relative to filtered backprojection (fbp): noise std reduction [%] = [fbp std - denoised std]/fbp std ×100%. Noise in uniform phantoms is measured in central circular regions of interest (ROIs) 40% the phantom diameter. In anthropomorphic phantoms, the ROI size was set at 30% phantom effective diameter and only applied to slices where there was enough liver to fit the ROI, see Figure 4 for examples. b) Noise reduction performance defined as reduction in root mean squared error (rmse) with the ground truth simulated phantom: rmse reduction [%] = [fbp rmse – denoised rmse]/fbp rmse ×100%.*
+
+![Figure 6](notebooks/figures/fig6_subgroup_denoising_std_comparison.png)
+*Denoising performance measured as pixel intensity standard deviation (std) measured in liver regions of interest (ROIs) from anthropomorphic phantoms. The ROI size was set at 30% phantom effective diameter and only applied to slices where there was enough liver to fit the ROI, see Figure 4 for examples. Pediatric subgroups are based on the waist diameters defined in Table 2.*
+
+![Figure 9b](notebooks/figures/fig9b_physical_validation.png)
+![Figure 9d](notebooks/figures/fig9d_uniform_phantom_physical_validation.png)
+*Figure 9 Physical image quality (IQ) phantom scan validation experiment. a) Uniform region for noise assessment in physical ACR464 phantom scanned on a Siemens Edge Plus scanner (see Table 2 for details). b) ACR phantom reconstructed at 3 fields of view (FOVs) estimating adult, child, and infant scan conditions. c) Simulated images of uniform phantom defined at adult, child, and newborn size.*
+
 
 Figure 7 can be found in [03_sharpness_preservation.ipynb](notebooks/03_sharpness_preservation.ipynb)
 
