@@ -6,6 +6,8 @@ from pathlib import Path
 import pydicom
 from skimage.transform import resize
 
+from ipywidgets import interact, IntSlider
+
 from PIL import Image
 
 def load_img(dcm_file):
@@ -62,15 +64,8 @@ def load_mhd(mhd_file):
 
 def get_ground_truth(fname):
     fname = Path(fname)
-    if fname.stem.startswith('signal'):
-        gt_file = 'noise_free.mhd'
-        return Path(fname).parents[2] / gt_file
-    if fname.stem.startswith('ACR464'):
-        gt_file = 'true.mhd'
-        return Path(fname).parents[3] / gt_file
-    else:
-        gt_file = 'true.mhd'
-        return Path(fname).parents[2] / gt_file
+    return list(Path(fname).parents[2].glob('*noisefree.dcm'))[0]
+
 
 def center_crop(img, thresh=-950):
     """square cropping where side length is based upon thresholded avergae *width*,
@@ -134,11 +129,13 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
                 mhd_file = phantom_df[phantom_df.recon == recon].file.item()
             else:
                 raise RuntimeError('No files found')
-            img = load_mhd(mhd_file).squeeze()[idx]
-            gt = load_mhd(get_ground_truth(mhd_file))
+            img = load_mhd(mhd_file).squeeze()
+
+            gt = load_mhd(get_ground_truth(mhd_file)).squeeze()
             
             if crop_to_fit:
                 original_shape = gt.shape
+                print(img.shape, gt.shape)
                 img = center_crop_like(img, gt)
                 gt = center_crop(gt)
                 img = resize(img, original_shape, anti_aliasing=True)
@@ -590,18 +587,25 @@ display_settings = {
     'liver': (150, 30),
 }
 
-def browse_studies(metadata, phantom='ACR464', fov=25, dose=100, recon='fbp', kernel='Qr43', repeat=0, display='soft tissues', slice_idx=0):
-    patient = metadata[(metadata['Dose [%]']==dose) &
-                       (metadata['phantom'] == phantom) &
-                       (metadata['FOV (cm)']==fov) &
-                       (metadata['recon'] == recon) &
-                       (metadata['kernel'] == kernel) &
-                       (metadata['repeat']==repeat) &
-                       (metadata['slice']==slice_idx)]
+def browse_studies(metadata, phantom='CTP404', fov=12.3, dose=100, recon='fbp', kernel='D45', instance=0, display='soft tissues'):
+    phantom_df =  metadata[(metadata.phantom==phantom) & (metadata.recon == recon)]
+    available_fovs = sorted(phantom_df['FOV [cm]'].unique())
+    if fov not in available_fovs:
+        print(f'FOV {fov} not in {available_fovs}')
+        return
+    patient = phantom_df[phantom_df['FOV [cm]']==fov]
+    if (recon != 'ground truth') and (recon != 'noise free'):
+        available_doses = sorted(patient['Dose [%]'].unique())
+        if dose not in available_doses:
+            print(f'dose {dose}% not in {available_doses}')
+            return
+        patient = patient[(patient['Dose [%]']==dose) &
+                       (patient['kernel'] == kernel) &
+                       (patient['instance']==instance)]
     dcm_file = patient.file.item()
     dcm = pydicom.dcmread(dcm_file)
     img = dcm.pixel_array + int(dcm.RescaleIntercept)
-    
+
     ww, wl = display_settings[display]
     minn = wl - ww/2
     maxx = wl + ww/2
@@ -610,20 +614,16 @@ def browse_studies(metadata, phantom='ACR464', fov=25, dose=100, recon='fbp', ke
     plt.colorbar(label=f'HU | {display} [ww: {ww}, wl: {wl}]')
     plt.title(patient['Name'].item())
 
-from ipywidgets import interact, IntSlider
-
 def study_viewer(metadata): 
     viewer = lambda **kwargs: browse_studies(metadata, **kwargs)
-    slices = metadata['slice'].unique()
     interact(viewer,
              phantom=metadata.phantom.unique(),
              dose=sorted(metadata['Dose [%]'].unique(), reverse=True),
-             fov=sorted(metadata['FOV (cm)'].unique()),
+             fov=sorted(metadata['FOV [cm]'].unique()),
              recon=metadata['recon'].unique(),
              kernel=metadata['kernel'].unique(),
-             repeat=metadata['repeat'].unique(),
-             display=display_settings.keys(),
-             slice_idx=IntSlider(value=slices[len(slices)//2], min=min(slices), max=max(slices)))
+             instance=metadata['instance'].unique(),
+             display=display_settings.keys())
     
 def make_metadata(data_dir):
     names = []
