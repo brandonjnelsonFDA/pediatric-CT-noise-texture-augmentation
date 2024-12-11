@@ -6,85 +6,102 @@ from pathlib import Path
 import pydicom
 from skimage.transform import resize
 
-from ipywidgets import interact, IntSlider
+from ipywidgets import interact
 
 from PIL import Image
+
 
 def load_img(dcm_file):
     dcm = pydicom.read_file(dcm_file)
     return dcm.pixel_array + dcm.RescaleIntercept
 
-def load_vol(dcm_list:list[str|Path]):
+
+def load_vol(dcm_list: list[str | Path]):
     return np.stack([load_img(o) for o in dcm_list])
 
-def ctshow(img, window='soft_tissue'):
-  # Define some specific window settings here
-  if window == 'soft_tissue':
-    ww = 400
-    wl = 40
-  elif window == 'bone':
-    ww = 2500
-    wl = 480
-  elif window == 'lung':
-    ww = 1500
-    wl = -600
-  elif isinstance(window, tuple):
-    ww = window[0]
-    wl = window[1]
-  else:
-    ww = 6.0 * img.std()
-    wl = img.mean()
 
-  # Plot image on clean axes with specified window level
-  vmin = wl - ww // 2
-  vmax = wl + ww // 2
+def ctshow(img, window='soft tissues', fig=None, ax=None):
+    if fig is None or ax is None:
+        fig, ax = plt.subplots()
+    # Define some specific window settings here
+    if isinstance(window, str):
+        if window not in display_settings:
+            raise ValueError(f"{window} not in {display_settings}")
+        ww, wl = display_settings[window]
+    elif isinstance(window, tuple):
+        ww = window[0]
+        wl = window[1]
+    else:
+        ww = 6.0 * img.std()
+        wl = img.mean()
 
-  plt.imshow(img, cmap='gray', vmin=vmin, vmax=vmax)
-  plt.xticks([])
-  plt.yticks([])
+    if img.ndim == 3:
+        img = img[0].copy()
 
-  return
+    ax.imshow(img, cmap='gray', vmin=wl-ww/2, vmax=wl+ww/2)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    return ax.imshow(img, cmap='gray', vmin=wl-ww/2, vmax=wl+ww/2)
+
 
 def circle_select(img, xy, r):
-    assert(img.ndim == 2)
+    assert img.ndim == 2
     circle_mask = np.zeros_like(img)
     for i in range(circle_mask.shape[0]):
         for j in range(circle_mask.shape[1]):
             if (i-xy[0])**2 + (j-xy[1])**2 < r**2:
-                 circle_mask[i,j] = True
+                circle_mask[i, j] = True
     return circle_mask.astype(bool)
 
+
 def get_circle_diameter(img):
-    """Assumes an image of a uniform water phantom that can be easily segmented using a mean intensity threshold"""
-    return 2*np.sqrt((img > img.mean()).sum()/np.pi)  #A = pi r^2 --> r = sqrt(A/pi) --> d = 2*r = 2*sqrt(A/pi)
+    """
+    Assumes an image of a uniform water phantom that can be easily
+    segmented using a mean intensity threshold
+
+    A = pi r^2 --> r = sqrt(A/pi) --> d = 2*r = 2*sqrt(A/pi)
+    """
+    return 2*np.sqrt((img > img.mean()).sum()/np.pi)
+
 
 def load_mhd(mhd_file):
     """meta header file, see examples here: <https://simpleitk.org/SimpleITK-Notebooks/01_Image_Basics.html>"""
     return sitk.GetArrayFromImage(sitk.ReadImage(mhd_file))
 
+
 def get_ground_truth(fname):
     fname = Path(fname)
-    return list(Path(fname).parents[2].glob('*noisefree.dcm'))[0]
+    return list(Path(fname).parents[2].glob('*groundtruth.dcm'))[0]
 
 
 def center_crop(img, thresh=-950):
-    """square cropping where side length is based upon thresholded avergae *width*,
-    assuming the imaged object is wider (covers more columns) than tall (covers fewer rows)""" 
+    """
+    square cropping where side length is based upon threshold average *width*,
+    assuming the imaged object is wider (covers more columns) than tall
+    """
     img_crop = img[:, img.mean(axis=0) > thresh]
     img_crop = img_crop[img.mean(axis=0) > thresh, :]
     return img_crop
 
+
 def center_crop_like(other, ref, thresh=-950):
-    """square cropping where side length is based upon thresholded avergae *width*,
-    assuming the imaged object is wider (covers more columns) than tall (covers fewer rows)""" 
+    """
+    square cropping where side length is based upon threshold average *width*,
+    assuming the imaged object is wider (covers more columns) than tall
+    """
     img_crop = other[:, ref.mean(axis=0) > thresh]
     img_crop = img_crop[ref.mean(axis=0) > thresh, :]
     return img_crop
 
-def wwwl_to_minmax(wwwl:tuple): return wwwl[1] - wwwl[0]/2, wwwl[1] + wwwl[0]/2
 
-def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], recons:list = ['fbp', 'RED-CNN', 'RED-CNN augmented'],
-                 phantom:str='ACR464', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256), wwwl=(80, 0), crop_to_fit=True, figure=None, fontsize=6, axis=None):
+def wwwl_to_minmax(wwwl: tuple):
+    return wwwl[1] - wwwl[0]/2, wwwl[1] + wwwl[0]/2
+
+
+def make_montage(meta_df: pd.DataFrame, dose: int = 25,
+                 fovs: list = [25.0, 15.0], recons: list = ['fbp', 'RED-CNN', 'RED-CNN augmented'],
+                 phantom:str='ACR464', roi_diameter:float|int=0.4, roi_center:tuple|str=(256, 256),
+                 wwwl=(80, 0), crop_to_fit=True, figure=None, fontsize=6, axis=None):
     """
     make image montage based on given argument parameters. Recons are plotted horizontally along the x axis while different diameters are plotted on y
     :Parameters:
@@ -102,12 +119,11 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
     all_imgs = []
     all_gts = []
     circle_selections = []
-    idx = 0
     for fov in fovs:
         recon_imgs = []
         recon_gts = []
         recon_selections = []
-        phantom_df =  meta_df[(meta_df.phantom==phantom)]
+        phantom_df = meta_df[(meta_df.phantom==phantom)]
         available_fovs = sorted(phantom_df['FOV [cm]'].unique())
         if fov not in available_fovs:
             print(f'FOV {fov} not in {available_fovs}')
@@ -132,7 +148,7 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
             img = load_mhd(mhd_file).squeeze()
 
             gt = load_mhd(get_ground_truth(mhd_file)).squeeze()
-            
+
             if crop_to_fit:
                 original_shape = gt.shape
                 print(img.shape, gt.shape)
@@ -140,14 +156,14 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
                 gt = center_crop(gt)
                 img = resize(img, original_shape, anti_aliasing=True)
                 gt = resize(gt, original_shape, anti_aliasing=True)
-                
+
             if phantom in ['MITA-LCD', 'uniform', 'ACR464']:  
                 phantom_diameter_px = get_circle_diameter(gt)
             else:
                 phantom_diameter_px = gt.shape[1]/1.1
             if (phantom == 'ACR464') & (fov < 20):
                 phantom_diameter_px = gt.shape[1] * 20/fov
-            
+
             circle_selection_diameter_px = roi_diameter if isinstance(roi_diameter, int) else roi_diameter*phantom_diameter_px
             if isinstance(roi_center, tuple | list):
                 selection = circle_select(gt, roi_center, r = circle_selection_diameter_px/2)
@@ -157,7 +173,7 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
                 hu_min, hu_max = wwwl_to_minmax(available_organs[roi_center])
                 if selection is None:
                     selection = add_random_circle_lesion(gt, mask=((gt >= hu_min) & (gt < hu_max)), radius=circle_selection_diameter_px/2)[1].astype(bool)
-            
+
             recon_imgs.append(img)
             recon_gts.append(gt)
             recon_selections.append(selection)
@@ -165,7 +181,7 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
         all_imgs.append(recon_imgs)
         all_gts.append(recon_gts)
         circle_selections.append(recon_selections)
-    
+
     immatrix = np.concatenate([np.concatenate(row, axis=1) for row in all_imgs], axis=0)
     if isinstance(wwwl, str):
         if wwwl not in display_settings:
@@ -184,7 +200,6 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
 
         eff_diam_cm = meta_df[meta_df['FOV [cm]'] == fovs[didx]]['effective diameter [cm]'].iloc[0]
         pix_size = fov/nx
-        eff_diam_px = np.ceil(eff_diam_cm/pix_size)
         subgroup = meta_df[meta_df['effective diameter [cm]'] == eff_diam_cm]['pediatric subgroup'].iloc[0]
         axis.annotate(f'{subgroup}\n{eff_diam_cm} cm', xy=(10, ylvl), xytext=(256, ylvl), bbox=dict(boxstyle='square,pad=0.3', fc="white", ec="black"), horizontalalignment='center', fontsize=fontsize)
         profile = np.where(recon.mean(axis=0)>-950)[0]
@@ -198,8 +213,9 @@ def make_montage(meta_df:pd.DataFrame, dose:int=25, fovs:list=[25.0, 15.0], reco
     axis.set_ylabel('FOV\n'+' cm | '.join(map(lambda o: str(round(o)), fovs[::-1])) + ' cm')
     # add scalebar
     return figure, axis
-    
+
 # from https://github.com/scikit-image/scikit-image/blob/v0.21.0/skimage/draw/draw.py#L11 
+
 
 def _ellipse_in_shape(shape, center, radii, rotation=0.):
     """Generate coordinates of points within ellipse bounded by shape.
@@ -363,6 +379,7 @@ def add_random_circle_lesion(image, mask, radius=20, contrast=-100):
     return img_w_lesion, lesion_image, (x, y)
 
 def noise_reduction(fbp_std, denoised_std): return 100*(fbp_std - denoised_std)/fbp_std
+
 
 def measure_roi_std_results(meta_df, roi_diameter=None):
     """

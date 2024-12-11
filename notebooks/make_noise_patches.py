@@ -37,9 +37,11 @@ def make_noise_images(sa_images, max_images = 500):
 def make_noise_patches(noise_images, patch_size=(30, 30), max_patches=30):
     return PatchExtractor(patch_size=patch_size, max_patches=max_patches).transform(noise_images)
 
+
 def load_img(dcm_file):
     dcm = pydicom.read_file(dcm_file)
     return dcm.pixel_array + dcm.RescaleIntercept
+
 
 def make_noise_image_dict(meta, dose=100, max_images=1000, kernel='fbp'):
     diameters = sorted(meta[(meta.recon==kernel) & (meta.phantom == 'uniform')]['effective diameter [cm]'].unique())

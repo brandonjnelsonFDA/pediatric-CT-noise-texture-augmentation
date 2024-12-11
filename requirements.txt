@@ -5,3 +5,4 @@ pydot
 SimpleITK
 scikit-learn
 tqdm
+python-dotenv
