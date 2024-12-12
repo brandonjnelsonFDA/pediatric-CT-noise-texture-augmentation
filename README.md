@@ -6,9 +6,10 @@ Running Title: *Pediatric CT Noise Texture Augmentation*
 
 This repository contains runable code to reproduce the figures in the article "Noise Texture Augmentation Improves Pediatric Generalizability in Deep Learning CT Denoising Models" by Nelson et al 2024.
 
-The digital phantom dataset can be reproduced using [pediatricIQphantoms](https://github.com/DIDSR/pediatricIQphantoms) or downloaded directly from [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10064035)
-
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11267694.svg)](https://doi.org/10.5281/zenodo.11267694)
+| Resource | Link |
+|----------|------|
+| **Preprint** | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13274476.svg)](https://doi.org/10.5281/zenodo.13274476) |
+| **Dataset**  | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11267694.svg)](https://doi.org/10.5281/zenodo.11267694) |
 
 ## Abridged Abstract
 
