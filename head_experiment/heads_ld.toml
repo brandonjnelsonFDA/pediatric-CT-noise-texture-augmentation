@@ -1,0 +1,29 @@
+# This is an example distribution file for PedSilicoICH simulations
+# All parameters are given as a list which is sampled from in the `recruit` program
+#
+# uncommented parameters here will override defaults
+[general]
+output_directory="heads/ld"
+# zspan=[0, 9]  # scan range in mm, min max, comment out to scan whole range
+desired_cases=10  # desired dataset size
+keep_raw=false  # keep projection data
+seed=42  # seed to reproduce dataset, set to false or integer
+
+[patient]
+age=[0, 100]  # range in yrs [min, max]
+
+[lesion]
+subtypes=[false]
+# mass_effect=true  # whether lesions displace brain tissue
+# edema=[0, 15]  # edema width range [min, max] in pixels
+# volume='src/pedsilicoICH/distributions/BHSD_volume_distributions.csv'  # str or list
+# attenuation='src/pedsilicoICH/distributions/BHSD_HU_distributions.csv'  # str or list
+
+[acquisition]
+views=[1000]
+kVp=[120]
+mA=[60]
+
+[recon]
+kernel=['standard']
+slice_thickness=1
