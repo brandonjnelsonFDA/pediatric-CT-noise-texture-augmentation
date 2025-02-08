@@ -11,6 +11,7 @@ logs
 */.ipynb_checkpoints
 notebooks/02 Evaluation figures.ipynb_checkpoints
 notebooks/02 Evaluation figures*.png
+pedsilicoICH_*.*
 
 denoising/save
 *.pkl

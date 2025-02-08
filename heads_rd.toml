@@ -3,9 +3,8 @@
 #
 # uncommented parameters here will override defaults
 [general]
-output_directory="heads/rd"
-# zspan=[0, 9]  # scan range in mm, min max, comment out to scan whole range
-desired_cases=10  # desired dataset size
+output_directory="/projects01/didsr-aiml/brandon.nelson/pedsilicoICH/head_experiment/rd"
+desired_cases=100  # desired dataset size
 keep_raw=false  # keep projection data
 seed=42  # seed to reproduce dataset, set to false or integer
 
@@ -14,10 +13,6 @@ age=[0, 100]  # range in yrs [min, max]
 
 [lesion]
 subtypes=[false]
-# mass_effect=true  # whether lesions displace brain tissue
-# edema=[0, 15]  # edema width range [min, max] in pixels
-# volume='src/pedsilicoICH/distributions/BHSD_volume_distributions.csv'  # str or list
-# attenuation='src/pedsilicoICH/distributions/BHSD_HU_distributions.csv'  # str or list
 
 [acquisition]
 views=[1000]

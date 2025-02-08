@@ -6,3 +6,4 @@ SimpleITK
 scikit-learn
 tqdm
 python-dotenv
+git+https://github.com/DIDSR/PedSilicoICH.git

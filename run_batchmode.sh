@@ -1,6 +1,6 @@
 #!/bin/sh
 INPUT=${1:-input.csv}
-SIM_NAME=pedsilicoICH_$(date +'%m-%d-%Y_%H-%M')
+SIM_NAME=pedsilicoICH_$(date +'%Y-%m-%d_%H-%M')
 LOG_DIR=logs/$SIM_NAME
 SAVE_DIR=/projects01/didsr-aiml/$USER/pedsilicoICH/$SIM_NAME
 
