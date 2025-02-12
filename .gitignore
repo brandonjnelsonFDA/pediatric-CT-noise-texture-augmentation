@@ -14,6 +14,6 @@ notebooks/02 Evaluation figures*.png
 pedsilicoICH_*.*
 
 denoising/save
-denoising/lightning_logs
+*/lightning_logs
 *.pkl
 notebooks/dataset_utils.py
