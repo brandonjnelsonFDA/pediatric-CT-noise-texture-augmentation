@@ -5,17 +5,21 @@ import pandas as pd
 import pydicom
 import torch
 from torchvision.datasets import VisionDataset
+from torchvision.transforms import v2
+
+import lightning as L
+from torch.utils.data import DataLoader, random_split
 
 
 def read_image(path):
-  dcm = pydicom.dcmread(path)
-  return dcm.pixel_array + int(dcm.RescaleIntercept)
+    dcm = pydicom.dcmread(path)
+    return dcm.pixel_array + int(dcm.RescaleIntercept)
 
 def get_patch(img, target, patch_size):
-  patched_img = img.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
-  patched_target = target.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
-  ix, iy = torch.randint(0, patched_img.shape[0]-1, size=(2, 1))
-  return patched_img[ix, iy], patched_target[ix, iy]
+    patched_img = img.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
+    patched_target = target.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
+    ix, iy = torch.randint(0, patched_img.shape[0]-1, size=(2, 1))
+    return patched_img[ix, iy], patched_target[ix, iy]
 
 class LDHeadCTDataset(VisionDataset):
     '''
@@ -83,3 +87,57 @@ class LDHeadCTDataset(VisionDataset):
                                  label.squeeze(),
                                   self.patch_size)
       return image, label
+
+
+class LDHeadCTDataModule(L.LightningDataModule):
+    def __init__(self, data_dir: str = "./", patch_size=64, batch_size=32, num_workers=1):
+        super().__init__()
+        self.data_dir = data_dir
+        self.patch_size = patch_size
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
+
+    def prepare_data(self):
+        # download
+        # LDHeadCTDataset(base_dir)
+        pass
+
+    def setup(self, stage: str):
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit":
+            train_set = LDHeadCTDataset(self.data_dir, train=True, patch_size=self.patch_size,
+                                       transform=self.transform, target_transform=self.transform)
+            # use 20% of training data for validation
+            train_set_size = int(len(train_set) * 0.8)
+            valid_set_size = len(train_set) - train_set_size
+
+            # split the train set into two
+            seed = torch.Generator().manual_seed(42)
+            self.train_set, self.val_set = random_split(train_set,
+                                                        [train_set_size,
+                                                         valid_set_size],
+                                                        generator=seed)
+
+        # Assign test dataset for use in dataloader(s)
+        if stage == "test":
+            self.test_set = LDHeadCTDataset(self.data_dir, train=False,
+                                transform=self.transform, target_transform=self.transform)
+
+        if stage == "predict":
+            self.predict_set = LDHeadCTDataset(self.data_dir, train=False,
+                                transform=self.transform, target_transform=self.transform)
+
+    def train_dataloader(self):
+        return DataLoader(self.train_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_set, batch_size=self.batch_size)
+
+    def predict_dataloader(self):
+        return DataLoader(self.predict_set, batch_size=self.batch_size)
