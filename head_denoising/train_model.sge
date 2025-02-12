@@ -1,0 +1,33 @@
+#!/bin/bash
+#SBATCH --time=30:00:00        # time limit
+#SBATCH --mem=20G             # memory limit
+#SBATCH --gres=gpu:1    #Any 1 GPU
+
+export LOG_DIR=$1
+DATA=$2
+
+mkdir -p $LOG_DIR
+mkdir -p $OUTPUT
+
+export LOGNAME=task_$JOB_NAME.log
+
+exec >>  $LOG_DIR/$LOGNAME
+exec 2>> $LOG_DIR/$LOGNAME
+
+echo "==== begin job $JOB_NAME at:" `date` "on host $HOSTNAME"
+
+source /home/$USER/anaconda3/envs/noise_augmentation/bin/activate
+
+START_TIME=`date +%s`
+set -x
+python train_UNet.py $DATA
+set +x
+EXIT_STATUS=$?
+END_TIME=`date +%s`
+ELAPSED_TIME=`expr $END_TIME - $START_TIME`
+echo "EXIT_STATUS=$EXIT_STATUS"
+echo "ELAPSED_TIME=$ELAPSED_TIME"
+
+echo
+echo "==== end of job $JOB_NAME at:" `date` "on host $HOSTNAME"
+exit

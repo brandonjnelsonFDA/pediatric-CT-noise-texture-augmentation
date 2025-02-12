@@ -1,10 +1,11 @@
 import torch.nn.functional as F
 import lightning as L
 import torch
+import torch.nn as nn
 from torchvision.transforms import v2
 import torchvision
 
-from LDHeadCTDataset import LDHeadCTDataset
+from data import LDHeadCTDataset
 
 import sys
 sys.path.append('..')
@@ -97,5 +98,113 @@ class LitAutoEncoder(L.LightningModule):
         return self(batch)
 
     def configure_optimizers(self):
+        print("Running REDCNN")
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
+
+
+class UNet(L.LightningModule):
+    def __init__(self, in_channels=1, out_channels=1, features=[32, 64, 128, 256, 512], learning_rate=1e-3):
+        super(UNet, self).__init__()
+        self.learning_rate = learning_rate
+        self.save_hyperparameters() # Save hyperparameters for easy loading
+
+        self.in_conv = DoubleConv(in_channels, features[0])
+        self.down_convs = nn.ModuleList()
+        self.up_convs = nn.ModuleList()
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        # Downward path
+        for i in range(len(features) - 1):
+            self.down_convs.append(DoubleConv(features[i], features[i+1]))
+
+        # Bottleneck
+        self.bottleneck = DoubleConv(features[-1], features[-1])
+
+        # Upward path
+        for i in range(len(features) - 1, 0, -1):
+            self.up_convs.append(nn.ConvTranspose2d(features[i], features[i-1], kernel_size=2, stride=2))
+            self.up_convs.append(DoubleConv(features[i-1]*2, features[i-1]))
+
+        self.out_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
+
+        self.loss_fn = nn.MSELoss()  # Example: Mean Squared Error.  Consider other losses like SSIM or a combination.
+
+        # load sample image for tensorboard
+        data_dir = '/projects01/didsr-aiml/brandon.nelson/pedsilicoICH/head_experiment/'
+        tfms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
+        test_image_set = LDHeadCTDataset(data_dir, train=False, transform=tfms, target_transform=tfms)
+        self.sample = test_image_set[0]
+
+    def forward(self, x):
+        # Downward path
+        skips = []
+        x = self.in_conv(x)
+        skips.append(x)  # Skip connection for the first level
+
+        for down_conv in self.down_convs:
+            x = self.pool(x)
+            x = down_conv(x)
+            skips.append(x)
+
+        # Bottleneck
+        x = self.bottleneck(x)
+
+        # Upward path
+        for i in range(0, len(self.up_convs), 2):
+            x = self.up_convs[i](x)  # Transpose convolution
+            skip = skips[len(skips) - 2 - i // 2]  # Corresponding skip connection
+            x = torch.cat([x, skip], dim=1)  # Concatenate
+            x = self.up_convs[i+1](x)  # Double convolution
+
+        # Output convolution
+        x = self.out_conv(x)
+        return x
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch  # Assuming your batch contains (input, target)
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log('train_loss', loss) # Logging for TensorBoard/other loggers
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log('val_loss', loss, prog_bar=True)
+
+        sample_image, sample_target = self.sample
+        sample_image_cuda = sample_image.to('cuda')
+        sample_pred = self(sample_image_cuda[None]).to('cpu')[0]
+        grid = torch.cat((sample_image, sample_pred, sample_target), dim=2)
+        self.logger.experiment.add_image('example_images', 
+                                         float_to_uint8(grid, 80, 40),
+                                         batch_idx)
+        return loss
+
+    def configure_optimizers(self):
+        print("Running UNet")
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        return optimizer
+
+    def predict_step(self, batch, batch_idx):
+        x = batch # No target during prediction
+        y_hat = self(x)
+        return y_hat
+
+
+class DoubleConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(DoubleConv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels), # Batch Normalization
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels), # Batch Normalization
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.conv(x)
