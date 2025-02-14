@@ -5,16 +5,16 @@
 
 export LOG_DIR=$1
 DATA=$2
+COUNT=$3
 
 mkdir -p $LOG_DIR
-mkdir -p $OUTPUT
 
-export LOGNAME=task_$JOB_NAME.log
+export LOGNAME=task_$SLURM_ARRAY_TASK_ID.log
 
 exec >>  $LOG_DIR/$LOGNAME
 exec 2>> $LOG_DIR/$LOGNAME
 
-echo "==== begin job $JOB_NAME at:" `date` "on host $HOSTNAME"
+echo "==== begin job $JOB_NAME ($SLURM_ARRAY_TASK_ID) at:" `date` "on host $HOSTNAME"
 
 source /home/$USER/anaconda3/envs/noise_augmentation/bin/activate
 
@@ -29,5 +29,5 @@ echo "EXIT_STATUS=$EXIT_STATUS"
 echo "ELAPSED_TIME=$ELAPSED_TIME"
 
 echo
-echo "==== end of job $JOB_NAME at:" `date` "on host $HOSTNAME"
+echo "==== end of job $JOB_NAME ($SLURM_ARRAY_TASK_ID) at:" `date` "on host $HOSTNAME"
 exit

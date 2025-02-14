@@ -1,8 +1,0 @@
-{
-    "jupyter.widgetScriptSources": [
-        "unpkg.com",
-        "jsdelivr.com"
-    ],
-    "workbench.editorLargeFileConfirmation": 30,
-    "python.analysis.typeCheckingMode": "basic"
-}

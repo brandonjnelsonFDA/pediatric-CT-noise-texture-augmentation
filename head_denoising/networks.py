@@ -186,7 +186,9 @@ class UNet(L.LightningModule):
     def configure_optimizers(self):
         print("Running UNet")
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10) # Example
+        # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100) # Another example
+        return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"} # "monitor" is important!
 
     def predict_step(self, batch, batch_idx):
         x = batch # No target during prediction

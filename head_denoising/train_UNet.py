@@ -1,4 +1,5 @@
 import sys
+sys.path.append('head_denoising')
 from argparse import ArgumentParser
 
 import matplotlib.pyplot as plt
