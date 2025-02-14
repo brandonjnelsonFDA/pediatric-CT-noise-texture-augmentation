@@ -4,8 +4,7 @@
 #SBATCH --gres=gpu:1    #Any 1 GPU
 
 export LOG_DIR=$1
-DATA=$2
-COUNT=$3
+CONFIG=$2
 
 mkdir -p $LOG_DIR
 
@@ -20,7 +19,7 @@ source /home/$USER/anaconda3/envs/noise_augmentation/bin/activate
 
 START_TIME=`date +%s`
 set -x
-python train_UNet.py $DATA
+python main.py fit -c $CONFIG
 set +x
 EXIT_STATUS=$?
 END_TIME=`date +%s`
