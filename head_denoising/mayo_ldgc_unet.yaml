@@ -56,6 +56,7 @@ data:
   class_path: data.MayoLDGCDataModule
   init_args:
     data_dir: /projects01/didsr-aiml/common_data/Mayo_CT_LDGC
+    region: chest
     patch_size: 64
     batch_size: 32
     num_workers: 5

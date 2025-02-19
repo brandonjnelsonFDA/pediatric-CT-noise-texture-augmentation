@@ -187,10 +187,10 @@ def make_montage(meta_df: pd.DataFrame, dose: int = 25,
         if wwwl not in display_settings:
             raise ValueError(f'{wwwl} not in {display_settings}')
         wwwl = display_settings[wwwl]
-    ctshow(immatrix, wwwl)
+    im = ctshow(immatrix, wwwl, fig=figure, ax=axis)
     immatrix = np.concatenate([np.concatenate(row, axis=1) for row in circle_selections], axis=0)
     axis.imshow(immatrix, alpha=0.1, cmap='Blues')
-    plt.colorbar(ax=axis, fraction=0.015, pad=0.01, label='HU')
+    plt.colorbar(im, ax=axis, fraction=0.015, pad=0.01, label='HU')
     ylvl = 60
     for didx, diam in enumerate(all_imgs):
         for ridx, recon in enumerate(diam):
