@@ -15,27 +15,6 @@ from data import HeadSimCTDataset, MayoLDGCDataset
 load_dotenv()
 
 
-def convert_to_dicom(img_slice: np.ndarray, phantom_path: str,
-                     spacings:tuple|None=None):
-    '''
-    :param img_slice: input 2D ndarray to be saved
-    :param phantom_path: filename to save dicom file to
-    :param spacings: tuple containing pixel spacings in mm
-    '''
-    # https://github.com/DIDSR/pediatricIQphantoms/blob/main/src/pediatricIQphantoms/make_phantoms.py#L144
-    Path(phantom_path).parent.mkdir(exist_ok=True, parents=True)
-    fpath = pydicom.data.get_testdata_file("CT_small.dcm")
-    ds = pydicom.dcmread(fpath)
-    img_slice = img_slice.squeeze()
-    ds.Rows, ds.Columns = img_slice.shape
-    if spacings:
-        ds.SliceThickness = spacings[0]
-        ds.PixelSpacing = [spacings[1], spacings[2]]
-    ds.PixelData = img_slice.copy(order='C').astype('int16') -\
-        int(ds.RescaleIntercept)
-    pydicom.dcmwrite(phantom_path, ds)
-
-
 def float_to_uint8(image, window_width, window_level):
     """
     Converts a floating-point CT image (PyTorch tensor) to an 8-bit tensor using windowing.
@@ -77,12 +56,11 @@ def float_to_uint8(image, window_width, window_level):
 
 
 class REDCNN(L.LightningModule):
-    def __init__(self, in_channels=1, out_channels=1, features=96, norm_range_min=-1024, norm_range_max=3072, learning_rate=1e-3, output_dir=None):
+    def __init__(self, in_channels=1, out_channels=1, features=96, norm_range_min=-1024, norm_range_max=3072, learning_rate=1e-3):
         super(REDCNN, self).__init__()
         self.norm_range_min = norm_range_min
         self.norm_range_max = norm_range_max
         self.learning_rate = learning_rate
-        self.output_dir = output_dir
         self.conv1 = nn.Conv2d(in_channels, features, kernel_size=5, stride=1, padding=0)
         self.conv2 = nn.Conv2d(features, features, kernel_size=5, stride=1, padding=0)
         self.conv3 = nn.Conv2d(features, features, kernel_size=5, stride=1, padding=0)
@@ -198,11 +176,10 @@ class REDCNN(L.LightningModule):
 
 
 class UNet(L.LightningModule):
-    def __init__(self, in_channels=1, out_channels=1, features=[32, 64, 128, 256, 512], learning_rate=1e-3, output_dir=None):
+    def __init__(self, in_channels=1, out_channels=1, features=[32, 64, 128, 256, 512], learning_rate=1e-3):
         super(UNet, self).__init__()
         self.learning_rate = learning_rate
         self.save_hyperparameters() # Save hyperparameters for easy loading
-        self.output_dir = output_dir
 
         self.in_conv = DoubleConv(in_channels, features[0])
         self.down_convs = nn.ModuleList()
