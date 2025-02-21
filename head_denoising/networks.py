@@ -77,8 +77,8 @@ def float_to_uint8(image, window_width, window_level):
 
 
 class REDCNN(L.LightningModule):
-    def __init__(self):
-        super().__init__(self, in_channels=1, out_channels=1, features=96, norm_range_min=-1024, norm_range_max=3072, learning_rate=1e-3, output_dir=None)
+    def __init__(self, in_channels=1, out_channels=1, features=96, norm_range_min=-1024, norm_range_max=3072, learning_rate=1e-3, output_dir=None):
+        super(REDCNN, self).__init__()
         self.norm_range_min = norm_range_min
         self.norm_range_max = norm_range_max
         self.learning_rate = learning_rate
@@ -109,7 +109,7 @@ class REDCNN(L.LightningModule):
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         x, y = batch
-        x_hat = self.torch_module(x)
+        x_hat = self(x)
         loss = F.mse_loss(x_hat, y)
         self.log('train_loss', loss)
 
@@ -180,18 +180,21 @@ class REDCNN(L.LightningModule):
     def predict_step(self, batch, batch_idx):
         x, y = batch # No target during prediction
         predictions = self(x)
+        fnames = []
         for i, prediction in enumerate(predictions):
             # convert tensor to numpy array
             prediction = prediction.detach().cpu().numpy()
-            convert_to_dicom(prediction, self.output_dir / 'prediction' / f'redcnn_{batch_idx:03d}_{i:03d}.dcm')
-            convert_to_dicom(x[i].detach().cpu().numpy(), self.output_dir / 'input' / f'input_{batch_idx:03d}_{i:03d}.dcm')
-            convert_to_dicom(y[i].detach().cpu().numpy(), self.output_dir / 'target' / f'target_{batch_idx:03d}_{i:03d}.dcm')
-        return prediction
+            fname = self.output_dir / 'prediction' / f'unet_{batch_idx:03d}_{i:03d}.dcm'
+            convert_to_dicom(prediction, fname)
+            fnames.append(fname)
+        return fnames
 
     def configure_optimizers(self):
         print("Running REDCNN")
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10) # Example
+        # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100) # Another example
+        return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"} # "monitor" is important!
 
 
 class UNet(L.LightningModule):
@@ -294,13 +297,14 @@ class UNet(L.LightningModule):
     def predict_step(self, batch, batch_idx):
         x, y = batch # No target during prediction
         predictions = self(x)
+        fnames = []
         for i, prediction in enumerate(predictions):
             # convert tensor to numpy array
             prediction = prediction.detach().cpu().numpy()
-            convert_to_dicom(prediction, self.output_dir / 'prediction' / f'unet_{batch_idx:03d}_{i:03d}.dcm')
-            convert_to_dicom(x[i].detach().cpu().numpy(), self.output_dir / 'input' / f'input_{batch_idx:03d}_{i:03d}.dcm')
-            convert_to_dicom(y[i].detach().cpu().numpy(), self.output_dir / 'target' / f'target_{batch_idx:03d}_{i:03d}.dcm')
-        return prediction
+            fname = self.output_dir / 'prediction' / f'unet_{batch_idx:03d}_{i:03d}.dcm'
+            convert_to_dicom(prediction, fname)
+            fnames.append(fname)
+        return fnames
 
 
 class DoubleConv(nn.Module):

@@ -4,7 +4,7 @@ import pydicom
 
 import SimpleITK as sitk
 
-def itk_to_dicom(img:sitk.SimpleITK.Image, fname:str|Path, patientname=None, patientid=0, age=None, studyname=None, studyid=0, seriesname=None, seriesid=0, patient_diameter=None, dose=None, kernel='D45', recon='fbp') -> list[Path]:
+def itk_to_dicom(img:sitk.SimpleITK.Image, fname:str|Path, patientname=None, patientid=0, age=None, studyname=None, studyid=0, seriesname=None, seriesid=0, patient_diameter=None, dose=None, kernel='D45', recon='fbp', **kwargs) -> list[Path]:
         """
             write ct data to DICOM file, returns list of written dicom file names
 

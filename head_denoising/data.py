@@ -388,3 +388,176 @@ class MayoLDGCDataModule(L.LightningDataModule):
     def predict_dataloader(self):
         return DataLoader(self.predict_set, batch_size=self.batch_size,
                           num_workers=self.num_workers)
+
+
+def age_to_eff_diameter(age):
+    # https://www.aapm.org/pubs/reports/rpt_204.pdf
+    x = torch.tensor(age)
+    a = 18.788598
+    b = 0.19486455
+    c = -1.060056
+    d = -7.6244784
+    y = a + b*x**1.5 + c *x**0.5 + d*torch.exp(-x)
+    eff_diam = y
+    return eff_diam
+
+
+def pediatric_subgroup(diameter):
+    if diameter < age_to_eff_diameter(1):
+        return 'newborn'
+    elif (diameter >= age_to_eff_diameter(1)) & (diameter < age_to_eff_diameter(5)):
+        return 'infant'
+    elif (diameter >= age_to_eff_diameter(5)) & (diameter < age_to_eff_diameter(12)):
+        return 'child'
+    elif (diameter >= age_to_eff_diameter(12)) & (diameter < age_to_eff_diameter(22)):
+        return 'adolescent'
+    else:
+        return 'adult'
+
+
+class PediatricIQDataset(VisionDataset):
+    '''
+    subgroups are: [newborn, infant, child, adolescent, and adults]
+    '''
+    def __init__(self,
+                 root=os.getcwd(),
+                 train: bool=True,
+                 transform=None,
+                 target_transform=None,
+                 download=True,
+                 patch_size=None,
+                 phantom=None,
+                 subgroup=None,
+                 testid='11.2 cm CTP404'):
+
+      base_dir = Path(root)
+      if download & (not base_dir.exists()):
+        utils.download_and_extract_archive(url='https://zenodo.org/records/11267694/files/pediatricIQphantoms.zip',
+                                           download_root=root)
+      # build metadata file
+      metadata = pd.read_csv(base_dir / 'metadata.csv').rename(columns={'Name': 'name'})
+      metadata['file'] = metadata['file'].apply(lambda o: base_dir / o)
+
+      if phantom:
+        metadata = metadata[metadata.phantom == phantom]
+
+      metadata['pediatric subgroup'] = metadata['effective diameter [cm]'].apply(pediatric_subgroup)
+
+      if subgroup:
+        if isinstance(subgroup, str):
+            subgroup = [subgroup]
+            metadata = metadata[metadata['pediatric subgroup'].isin(subgroup)]
+      # assign slice labels
+      for name in metadata.name.unique():
+            for dose in metadata[metadata.name == name]['Dose [%]'].unique():
+                count = len(metadata[(metadata.name == name) &
+                            (metadata['Dose [%]'] == dose)])
+                metadata.loc[(metadata.name == name) &
+                             (metadata['Dose [%]'] == dose), 'slice'] = list(range(count))
+      if train:
+        metadata = metadata[metadata['name'] != testid]
+      else:
+        metadata = metadata[metadata['name'] == testid]
+      fovs = metadata['FOV [cm]'].unique()
+      self.root = base_dir
+      self.metadata = metadata
+      self.patch_size = patch_size
+      self.ld_metadata = self.metadata[self.metadata['Dose [%]'] == 25]
+      self.rd_metadata = self.metadata[self.metadata['Dose [%]'] == 100]
+      self.transform = transform
+      self.target_transform = target_transform
+
+    def __len__(self):
+      return len(self.ld_metadata)
+
+    def __getitem__(self, idx):
+      ld_patient = self.ld_metadata.iloc[idx]
+      ld_img_path = self.root / ld_patient['file']
+      image = read_image(ld_img_path)
+
+      rd_patient = self.rd_metadata[(self.rd_metadata['name'] == ld_patient['name']) &
+                                    (self.rd_metadata['slice'] == ld_patient['slice'])]
+      rd_img_path = self.root / rd_patient['file'].item()
+      label = read_image(rd_img_path)
+      if self.transform:
+        image = self.transform(image)
+      if self.target_transform:
+        label = self.target_transform(label)
+
+      if self.patch_size:
+        image, label = get_patch(image.squeeze(),
+                                 label.squeeze(),
+                                 self.patch_size)
+      return image[None], label[None]
+
+class AnthropomorphicDataset(VisionDataset):
+    def __init__(self,
+                 root=os.getcwd(),
+                 train: bool=True,
+                 transform=None,
+                 target_transform=None,
+                 download=True,
+                 patch_size=None,
+                 phantom=None,
+                 subgroup=None,
+                 testid='female pt151'):
+
+      base_dir = Path(root)
+      if download & (not base_dir.exists()):
+        utils.download_and_extract_archive(url='https://zenodo.org/records/12538350/files/anthropomorphic.zip',
+                                           download_root=root)
+      # build metadata file
+      metadata = pd.read_csv(base_dir / 'metadata.csv').rename(columns={'Name': 'name'})
+      metadata['file'] = metadata['file'].apply(lambda o: base_dir / o)
+
+      if phantom:
+        metadata = metadata[metadata.phantom == phantom]   
+
+      metadata['pediatric subgroup'] = metadata['effective diameter [cm]'].apply(pediatric_subgroup)
+
+      if subgroup:
+        if isinstance(subgroup, str):
+            subgroup = [subgroup]
+            metadata = metadata[metadata['pediatric subgroup'].isin(subgroup)]
+      # assign slice labels
+      for name in metadata.name.unique():
+            for dose in metadata[metadata.name == name]['Dose [%]'].unique():
+                count = len(metadata[(metadata.name == name) &
+                            (metadata['Dose [%]'] == dose)])
+                metadata.loc[(metadata.name == name) &
+                             (metadata['Dose [%]'] == dose), 'slice'] = list(range(count))
+      if train:
+        metadata = metadata[metadata['name'] != testid]
+      else:
+        metadata = metadata[metadata['name'] == testid]
+      fovs = metadata['FOV [cm]'].unique()
+      self.root = base_dir
+      self.metadata = metadata
+      self.patch_size = patch_size
+      self.ld_metadata = self.metadata[self.metadata['Dose [%]'] == 25]
+      self.rd_metadata = self.metadata[self.metadata['Dose [%]'] == 100]
+      self.transform = transform
+      self.target_transform = target_transform
+
+    def __len__(self):
+      return len(self.ld_metadata)
+
+    def __getitem__(self, idx):
+      ld_patient = self.ld_metadata.iloc[idx]
+      ld_img_path = self.root / ld_patient['file']
+      image = read_image(ld_img_path)
+
+      rd_patient = self.rd_metadata[(self.rd_metadata['name'] == ld_patient['name']) &
+                                    (self.rd_metadata['slice'] == ld_patient['slice'])]
+      rd_img_path = self.root / rd_patient['file'].item()
+      label = read_image(rd_img_path)
+      if self.transform:
+        image = self.transform(image)
+      if self.target_transform:
+        label = self.target_transform(label)
+
+      if self.patch_size:
+        image, label = get_patch(image.squeeze(),
+                                 label.squeeze(),
+                                 self.patch_size)
+      return image[None], label[None]
