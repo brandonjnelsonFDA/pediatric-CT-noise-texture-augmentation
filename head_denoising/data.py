@@ -423,7 +423,7 @@ class PediatricIQDataset(VisionDataset):
     By specifying the 'region' parameter, it's possible to only use a subset of the data.
     Args:
         root (str, optional): The root directory of the dataset. Defaults to the current working directory.
-        train (bool, optional): Whether to use the training set. Defaults to True.
+        train (bool, str, optional): Whether to use the training set. Defaults to 'predict'.
         phantom (str, optional): Phantom type to include ('CTP404', 'MITA-LCD', 'uniform', 'anthropomorphic'). Defaults to None (use all phantoms).
         transform (callable, optional): A function/transform that takes in a sample and returns a transformed version.
         target_transform (callable, optional): A function/transform that takes in the target and returns a transformed version.
@@ -441,7 +441,7 @@ class PediatricIQDataset(VisionDataset):
     '''
     def __init__(self,
                  root=os.getcwd(),
-                 train: bool=True,
+                 train: bool|str='predict',
                  phantom=None,
                  transform=None,
                  target_transform=None,
