@@ -352,7 +352,7 @@ class MayoLDGCDataModule(L.LightningDataModule):
                                         patch_size=self.patch_size, transform=self.transform,
                                         target_transform=self.transform)
             # use 20% of training data for validation
-            train_set_size = int(len(train_set) * 0.8)
+            train_set_size = int(len(train_set) * 0.9)
             valid_set_size = len(train_set) - train_set_size
 
             # split the train set into two
@@ -417,26 +417,52 @@ def pediatric_subgroup(diameter):
 
 class PediatricIQDataset(VisionDataset):
     '''
-    subgroups are: [newborn, infant, child, adolescent, and adults]
+    A PyTorch dataset for the Pediatric Image Quality CT dataset.
+
+    This dataset includes CT scans from four phantoms: CTP404, MITA-LCD, uniform water, and anthropomorphic.
+    By specifying the 'region' parameter, it's possible to only use a subset of the data.
+    Args:
+        root (str, optional): The root directory of the dataset. Defaults to the current working directory.
+        train (bool, optional): Whether to use the training set. Defaults to True.
+        phantom (str, optional): Phantom type to include ('CTP404', 'MITA-LCD', 'uniform', 'anthropomorphic'). Defaults to None (use all phantoms).
+        transform (callable, optional): A function/transform that takes in a sample and returns a transformed version.
+        target_transform (callable, optional): A function/transform that takes in the target and returns a transformed version.
+        download (bool, optional): Whether to download the dataset if it's not already present in the root directory. Defaults to True.
+        patch_size (int, optional): The size of patches to extract from the images. Defaults to None (do not extract patches).
+
+    Attributes:
+        root (Path): The root directory of the dataset.
+        metadata (DataFrame): A pandas DataFrame containing metadata for the dataset.
+        patch_size (int): The size of patches to extract from the images.
+        ld_metadata (DataFrame): A pandas DataFrame containing metadata for the low dose images.
+        rd_metadata (DataFrame): A pandas DataFrame containing metadata for the routine dose images.
+        transform (callable): A function/transform that takes in a sample and returns a transformed version.
+        target_transform (callable): A function/transform that takes in the target and returns a transformed version.
     '''
     def __init__(self,
                  root=os.getcwd(),
                  train: bool=True,
+                 phantom=None,
                  transform=None,
                  target_transform=None,
                  download=True,
                  patch_size=None,
-                 phantom=None,
-                 subgroup=None,
-                 testid='11.2 cm CTP404'):
+                 subgroup=None):
 
       base_dir = Path(root)
       if download & (not base_dir.exists()):
         utils.download_and_extract_archive(url='https://zenodo.org/records/11267694/files/pediatricIQphantoms.zip',
-                                           download_root=root)
+                                           download_root=root / 'pediatricIQphantoms')
+        utils.download_and_extract_archive(url='https://zenodo.org/records/12538350/files/anthropomorphic.zip',
+                                           download_root=root / 'anthropomorphic')
       # build metadata file
-      metadata = pd.read_csv(base_dir / 'metadata.csv').rename(columns={'Name': 'name'})
-      metadata['file'] = metadata['file'].apply(lambda o: base_dir / o)
+      dfs = []
+      for series in ['pediatricIQphantoms', 'anthropomorphic']:
+        temp_dir = base_dir / series
+        temp = pd.read_csv(temp_dir / 'metadata.csv').rename(columns={'Name': 'name'})
+        temp['file'] = temp['file'].apply(lambda o: temp_dir / o)
+        dfs.append(temp)
+      metadata = pd.concat(dfs, ignore_index=True)
 
       if phantom:
         metadata = metadata[metadata.phantom == phantom]
@@ -454,10 +480,14 @@ class PediatricIQDataset(VisionDataset):
                             (metadata['Dose [%]'] == dose)])
                 metadata.loc[(metadata.name == name) &
                              (metadata['Dose [%]'] == dose), 'slice'] = list(range(count))
-      if train:
-        metadata = metadata[metadata['name'] != testid]
-      else:
-        metadata = metadata[metadata['name'] == testid]
+
+      testid = metadata['name'].iloc[:2]
+      if train == 'predict':
+        pass
+      elif train == True:
+        metadata = metadata[~metadata['name'].isin(testid)]
+      elif train == False:
+        metadata = metadata[metadata['name'].isin(testid)]
       fovs = metadata['FOV [cm]'].unique()
       self.root = base_dir
       self.metadata = metadata
@@ -488,76 +518,88 @@ class PediatricIQDataset(VisionDataset):
         image, label = get_patch(image.squeeze(),
                                  label.squeeze(),
                                  self.patch_size)
-      return image[None], label[None]
+      return image, label
 
-class AnthropomorphicDataset(VisionDataset):
-    def __init__(self,
-                 root=os.getcwd(),
-                 train: bool=True,
-                 transform=None,
-                 target_transform=None,
-                 download=True,
-                 patch_size=None,
-                 phantom=None,
-                 subgroup=None,
-                 testid='female pt151'):
 
-      base_dir = Path(root)
-      if download & (not base_dir.exists()):
-        utils.download_and_extract_archive(url='https://zenodo.org/records/12538350/files/anthropomorphic.zip',
-                                           download_root=root)
-      # build metadata file
-      metadata = pd.read_csv(base_dir / 'metadata.csv').rename(columns={'Name': 'name'})
-      metadata['file'] = metadata['file'].apply(lambda o: base_dir / o)
+class PediatricIQDataModule(L.LightningDataModule):
+    """
+    A PyTorch Lightning DataModule for the Pediatric Image Quality CT dataset.
 
-      if phantom:
-        metadata = metadata[metadata.phantom == phantom]   
+    This module handles the data preprocessing, splitting into train/validation/test datasets,
+    and provides dataloaders for each split.
 
-      metadata['pediatric subgroup'] = metadata['effective diameter [cm]'].apply(pediatric_subgroup)
+    Args:
+        data_dir (str, optional): The root directory of the dataset. Defaults to the current working directory.
+        region (str, optional): The region of interest ('abdomen', 'chest', 'neuro'). Defaults to None (use all regions).
+        patch_size (int, optional): The size of patches to extract from the images. Defaults to 64.
+        batch_size (int, optional): The batch size for the dataloaders. Defaults to 32.
+        num_workers (int, optional): The number of workers for the dataloaders. Defaults to 31.
 
-      if subgroup:
-        if isinstance(subgroup, str):
-            subgroup = [subgroup]
-            metadata = metadata[metadata['pediatric subgroup'].isin(subgroup)]
-      # assign slice labels
-      for name in metadata.name.unique():
-            for dose in metadata[metadata.name == name]['Dose [%]'].unique():
-                count = len(metadata[(metadata.name == name) &
-                            (metadata['Dose [%]'] == dose)])
-                metadata.loc[(metadata.name == name) &
-                             (metadata['Dose [%]'] == dose), 'slice'] = list(range(count))
-      if train:
-        metadata = metadata[metadata['name'] != testid]
-      else:
-        metadata = metadata[metadata['name'] == testid]
-      fovs = metadata['FOV [cm]'].unique()
-      self.root = base_dir
-      self.metadata = metadata
-      self.patch_size = patch_size
-      self.ld_metadata = self.metadata[self.metadata['Dose [%]'] == 25]
-      self.rd_metadata = self.metadata[self.metadata['Dose [%]'] == 100]
-      self.transform = transform
-      self.target_transform = target_transform
+    Attributes:
+        data_dir (str): The root directory of the dataset.
+        region (str): The region of interest.
+        patch_size (int): The size of patches to extract from the images.
+        batch_size (int): The batch size for the dataloaders.
+        num_workers (int): The number of workers for the dataloaders.
+        transform (callable): A function/transform that takes in a sample and returns a transformed version.
+        train_set (MayoLDGCDataset): The training dataset.
+        val_set (MayoLDGCDataset): The validation dataset.
+        test_set (MayoLDGCDataset): The test dataset.
+        predict_set (MayoLDGCDataset): The prediction dataset.
+    """
 
-    def __len__(self):
-      return len(self.ld_metadata)
+    def __init__(self, data_dir: str = "./", phantom=None, patch_size=64, batch_size=32, num_workers=31):
+        super().__init__()
+        self.data_dir = data_dir
+        self.phantom = phantom
+        self.patch_size = patch_size
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
 
-    def __getitem__(self, idx):
-      ld_patient = self.ld_metadata.iloc[idx]
-      ld_img_path = self.root / ld_patient['file']
-      image = read_image(ld_img_path)
+    def prepare_data(self):
+        PediatricIQDataset(self.data_dir)
 
-      rd_patient = self.rd_metadata[(self.rd_metadata['name'] == ld_patient['name']) &
-                                    (self.rd_metadata['slice'] == ld_patient['slice'])]
-      rd_img_path = self.root / rd_patient['file'].item()
-      label = read_image(rd_img_path)
-      if self.transform:
-        image = self.transform(image)
-      if self.target_transform:
-        label = self.target_transform(label)
+    def setup(self, stage: str):
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit":
+            train_set = PediatricIQDataset(self.data_dir, train=True, phantom=self.phantom,
+                                           patch_size=self.patch_size, transform=self.transform,
+                                           target_transform=self.transform)
+            # use 20% of training data for validation
+            train_set_size = int(len(train_set) * 0.8)
+            valid_set_size = len(train_set) - train_set_size
 
-      if self.patch_size:
-        image, label = get_patch(image.squeeze(),
-                                 label.squeeze(),
-                                 self.patch_size)
-      return image[None], label[None]
+            # split the train set into two
+            seed = torch.Generator().manual_seed(42)
+            self.train_set, self.val_set = random_split(train_set,
+                                                        [train_set_size,
+                                                         valid_set_size],
+                                                        generator=seed)
+
+        # Assign test dataset for use in dataloader(s)
+        if stage == "test":
+            self.test_set = PediatricIQDataset(self.data_dir, train=False,
+                                               region=self.region, transform=self.transform,
+                                               target_transform=self.transform)
+
+        if stage == "predict":
+            self.predict_set = PediatricIQDataset(self.data_dir, train='predict',
+                                                  phantom=self.phantom, transform=self.transform,
+                                                  target_transform=self.transform)
+
+    def train_dataloader(self):
+        return DataLoader(self.train_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def predict_dataloader(self):
+        return DataLoader(self.predict_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)

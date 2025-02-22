@@ -10,7 +10,7 @@ python main.py fit     --trainer.callbacks.output_dir $SAVE_DIR\
                        --trainer.logger.save_dir $SAVE_DIR
 
 python main.py predict --trainer.callbacks DicomWriter\
-                       --trainer.callbacks.output_dir $SAVE_DIR
+                       --trainer.callbacks.output_dir $SAVE_DIR\
                        --model REDCNN\
                        --data MayoLDGCDataModule\
                        --data.data_dir /projects01/didsr-aiml/common_data/Mayo_CT_LDGC\
