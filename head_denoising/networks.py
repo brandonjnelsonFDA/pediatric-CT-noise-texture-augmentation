@@ -156,16 +156,8 @@ class REDCNN(L.LightningModule):
         return image
   
     def predict_step(self, batch, batch_idx):
-        x, y = batch # No target during prediction
-        predictions = self(x)
-        fnames = []
-        for i, prediction in enumerate(predictions):
-            # convert tensor to numpy array
-            prediction = prediction.detach().cpu().numpy()
-            fname = self.output_dir / 'prediction' / f'unet_{batch_idx:03d}_{i:03d}.dcm'
-            convert_to_dicom(prediction, fname)
-            fnames.append(fname)
-        return fnames
+        x, _ = batch
+        return self(x)
 
     def configure_optimizers(self):
         print("Running REDCNN")
@@ -272,16 +264,8 @@ class UNet(L.LightningModule):
         return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"} # "monitor" is important!
 
     def predict_step(self, batch, batch_idx):
-        x, y = batch # No target during prediction
-        predictions = self(x)
-        fnames = []
-        for i, prediction in enumerate(predictions):
-            # convert tensor to numpy array
-            prediction = prediction.detach().cpu().numpy()
-            fname = self.output_dir / 'prediction' / f'unet_{batch_idx:03d}_{i:03d}.dcm'
-            convert_to_dicom(prediction, fname)
-            fnames.append(fname)
-        return fnames
+        x, _ = batch
+        return self(x)
 
 
 class DoubleConv(nn.Module):

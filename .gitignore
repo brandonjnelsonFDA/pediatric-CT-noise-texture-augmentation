@@ -21,3 +21,4 @@ peds_noise_augmentation_202*
 .env
 .vscode
 *.dcm
+events.out.tfevents*

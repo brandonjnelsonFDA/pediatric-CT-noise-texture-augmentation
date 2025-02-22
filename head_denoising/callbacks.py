@@ -1,8 +1,12 @@
+from pathlib import Path
+
+import numpy as np
+import pydicom
 import torch
 from lightning.pytorch.callbacks import BasePredictionWriter
 
 
-def convert_to_dicom(img_slice: np.ndarray, phantom_path: str,
+def convert_to_dicom(img_slice: torch.tensor, phantom_path: str,
                      spacings:tuple|None=None):
     '''
     :param img_slice: input 2D ndarray to be saved
@@ -27,7 +31,9 @@ class DicomWriter(BasePredictionWriter):
 
     def __init__(self, output_dir, write_interval):
         super().__init__(write_interval)
-        self.output_dir = output_dir
+        self.output_dir = Path(output_dir)
 
     def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
-        convert_to_dicom(predictions, os.path.join(self.output_dir, "predictions.pt"))
+        for batch_idx, batch in zip(batch_indices[0], predictions):
+            for idx, prediction in zip(batch_idx, batch):
+                convert_to_dicom(np.array(prediction), self.output_dir / f"{idx:04d}.dcm")
