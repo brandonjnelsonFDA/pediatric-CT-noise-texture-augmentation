@@ -23,7 +23,7 @@ trainer:
       filename_suffix: ''
   callbacks: null
   fast_dev_run: false
-  max_epochs: 1
+  max_epochs: 500
   min_epochs: null
   max_steps: -1
   min_steps: null
@@ -59,12 +59,6 @@ model:
   init_args:
     in_channels: 1
     out_channels: 1
-    features:
-    - 32
-    - 64
-    - 128
-    - 256
-    - 512
     learning_rate: 0.001
 data:
   class_path: data.MayoLDGCDataModule

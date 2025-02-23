@@ -1,0 +1,63 @@
+#!/bin/bash
+#SBATCH --time=30:00:00        # time limit
+#SBATCH --mem=20G             # memory limit
+#SBATCH --gres=gpu:1    #Any 1 GPU
+
+export LOG_DIR="$1"_"$SLURM_ARRAY_TASK_ID"
+LOG_DIR=$LOG_DIR
+TRAIN_CONFIG=${2:-train_adult.yaml}
+MODEL=${3:-UNet}
+NUM_WORKERS=$(($(nproc) - 1))
+
+mkdir -p $LOG_DIR
+
+export LOGNAME=task_$SLURM_ARRAY_TASK_ID.log
+
+exec >>  $LOG_DIR/$LOGNAME
+exec 2>> $LOG_DIR/$LOGNAME
+
+echo "==== begin job $JOB_NAME ($SLURM_ARRAY_TASK_ID) at:" `date` "on host $HOSTNAME"
+
+source /home/$USER/anaconda3/envs/noise_augmentation/bin/activate
+
+START_TIME=`date +%s`
+set -x
+echo "Starting Training on Pediatric Data..."
+python main.py fit     --config $TRAIN_CONFIG\
+                       --model $MODEL\
+                       --trainer.logger.save_dir $LOG_DIR\
+                       --data.num_workers $NUM_WORKERS
+
+# Find the best checkpoint path
+BEST_CHECKPOINT=$(find "$LOG_DIR" -type f -name "*.ckpt" | sort -n | tail -n 1)
+
+if [ -z "$BEST_CHECKPOINT" ]; then
+  echo "Error: Best checkpoint not found in $LOG_DIR/checkpoints"
+  exit 1
+fi
+
+echo "Best checkpoint found: $BEST_CHECKPOINT"
+
+echo "Predicting on pediatric test data..."
+python main.py predict --config predict_pediatric.yaml\
+                       --model $MODEL\
+                       --trainer.callbacks.output_dir $LOG_DIR/PedIQ\
+                       --data.num_workers $NUM_WORKERS\
+                       --ckpt_path "$BEST_CHECKPOINT"
+
+echo "Predicting on adult test data..."
+python main.py predict --config predict_adult.yaml\
+                       --model $MODEL\
+                       --trainer.callbacks.output_dir $LOG_DIR/MayoLDGC\
+                       --data.num_workers $NUM_WORKERS\
+                       --ckpt_path "$BEST_CHECKPOINT"
+set +x
+EXIT_STATUS=$?
+END_TIME=`date +%s`
+ELAPSED_TIME=`expr $END_TIME - $START_TIME`
+echo "EXIT_STATUS=$EXIT_STATUS"
+echo "ELAPSED_TIME=$ELAPSED_TIME"
+
+echo
+echo "==== end of job $JOB_NAME ($SLURM_ARRAY_TASK_ID) at:" `date` "on host $HOSTNAME"
+exit

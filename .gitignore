@@ -17,7 +17,8 @@ denoising/save
 */lightning_logs
 *.pkl
 notebooks/dataset_utils.py
-peds_noise_augmentation_202*
+train_*.e*
+train_*.o*
 .env
 .vscode
 *.dcm
