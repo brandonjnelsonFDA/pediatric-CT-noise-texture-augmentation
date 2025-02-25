@@ -425,6 +425,7 @@ class PediatricIQDataset(VisionDataset):
         root (str, optional): The root directory of the dataset. Defaults to the current working directory.
         train (bool, str, optional): Whether to use the training set. Defaults to 'predict'.
         phantom (str, optional): Phantom type to include ('CTP404', 'MITA-LCD', 'uniform', 'anthropomorphic'). Defaults to None (use all phantoms).
+        subgroup (str, list, optional): newborn, child, adolescent, adult
         transform (callable, optional): A function/transform that takes in a sample and returns a transformed version.
         target_transform (callable, optional): A function/transform that takes in the target and returns a transformed version.
         download (bool, optional): Whether to download the dataset if it's not already present in the root directory. Defaults to True.
@@ -443,11 +444,11 @@ class PediatricIQDataset(VisionDataset):
                  root=os.getcwd(),
                  train: bool|str='predict',
                  phantom=None,
+                 subgroup=None,
                  transform=None,
                  target_transform=None,
                  download=True,
-                 patch_size=None,
-                 subgroup=None):
+                 patch_size=None):
 
       base_dir = Path(root)
       if download & (not base_dir.exists()):
@@ -472,7 +473,7 @@ class PediatricIQDataset(VisionDataset):
       if subgroup:
         if isinstance(subgroup, str):
             subgroup = [subgroup]
-            metadata = metadata[metadata['pediatric subgroup'].isin(subgroup)]
+        metadata = metadata[metadata['pediatric subgroup'].isin(subgroup)]
       # assign slice labels
       for name in metadata.name.unique():
             for dose in metadata[metadata.name == name]['Dose [%]'].unique():
@@ -530,14 +531,15 @@ class PediatricIQDataModule(L.LightningDataModule):
 
     Args:
         data_dir (str, optional): The root directory of the dataset. Defaults to the current working directory.
-        region (str, optional): The region of interest ('abdomen', 'chest', 'neuro'). Defaults to None (use all regions).
+        phantom (str, optional): Phantom type to include ('CTP404', 'MITA-LCD', 'uniform', 'anthropomorphic'). Defaults to None (use all phantoms).
+        subgroup (str, list, optional): newborn, child, adolescent, adult based on size
         patch_size (int, optional): The size of patches to extract from the images. Defaults to 64.
         batch_size (int, optional): The batch size for the dataloaders. Defaults to 32.
         num_workers (int, optional): The number of workers for the dataloaders. Defaults to 31.
 
     Attributes:
         data_dir (str): The root directory of the dataset.
-        region (str): The region of interest.
+         (str): The region of interest.
         patch_size (int): The size of patches to extract from the images.
         batch_size (int): The batch size for the dataloaders.
         num_workers (int): The number of workers for the dataloaders.
@@ -548,10 +550,12 @@ class PediatricIQDataModule(L.LightningDataModule):
         predict_set (MayoLDGCDataset): The prediction dataset.
     """
 
-    def __init__(self, data_dir: str = "./", phantom=None, patch_size=64, batch_size=32, num_workers=31):
+    def __init__(self, data_dir: str = "./", phantom=None, subgroup=None, shuffle=False, patch_size=64, batch_size=32, num_workers=31):
         super().__init__()
         self.data_dir = data_dir
         self.phantom = phantom
+        self.subgroup = subgroup
+        self.shuffle = shuffle
         self.patch_size = patch_size
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -590,7 +594,179 @@ class PediatricIQDataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers, shuffle=self.shuffle)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_set, batch_size=self.batch_size,
                           num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def predict_dataloader(self):
+        return DataLoader(self.predict_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+
+class AugmentedDataSet(VisionDataset):
+    '''
+    A PyTorch dataset that uses one dataset (dset1) as the main dataset and uses a second dataset (dset2) for adding noise
+    to augment the data.
+
+    The dataset is used in the context of low dose CT image enhancement by adding noise from a separate dataset
+    to the input images. This can help improve the model's ability to reconstruct high quality images from low dose data.
+
+    Args:
+        dset1 (VisionDataset): The main dataset to use for the input images.
+        dset1_kwargs (dict): The arguments to pass to the constructor of dset1.
+        dset2 (VisionDataset): The dataset to use for adding noise to the input images. Should be a low dose CT dataset with corresponding high dose images.
+        dset2_kwargs (dict): The arguments to pass to the constructor of dset2.
+        proportion (float, optional): The probability of adding noise to an input image. Defaults to 0.5.
+
+    Attributes:
+        dset1 (VisionDataset): The main dataset to use for the input images.
+        dset2 (VisionDataset): The dataset to use for adding noise to the input images.
+        root (Path): The root directory of the input dataset.
+        proportion (float): The probability of adding noise to an input image.
+    '''
+    def __init__(self, dset1: VisionDataset, dset1_kwargs: dict, dset2: VisionDataset, dset2_kwargs: dict, proportion: float=0.5):
+        self.dset1 = dset1(**dset1_kwargs)
+        self.dset2 = dset2(**dset2_kwargs)
+        self.root = dset1_kwargs['root']
+        self.proportion = proportion
+
+    def __len__(self):
+        '''
+        Returns the number of samples in the dataset.
+
+        Returns:
+            int: The number of samples in the dataset.
+        '''
+        return len(self.dset1)
+
+    def __getitem__(self, i):
+        '''
+        Returns the sample and target at the given index. If a random value is less than the predefined proportion, then the input image
+        is augmented with noise from the second dataset.
+
+        Args:
+            i (int): The index of the sample.
+
+        Returns:
+            tuple: A tuple containing the sample and target.
+        '''
+        image, label = self.dset1[i]
+        if torch.rand(1)[0] < self.proportion:
+            idx = torch.randint(0, len(self.dset2), size=(1,))[0].numpy()
+            x2, y2 = self.dset2[idx]
+            noise = y2 - x2
+            image = label + noise
+        return image, label
+
+
+class AugmentedDataModule(L.LightningDataModule):
+    """
+    A PyTorch Lightning DataModule that uses a primary dataset and a secondary dataset to generate augmented data.
+    The secondary dataset is used to add noise to the inputs from the primary dataset, thus providing a method to
+    artificially increase the amount of available data.
+
+    This DataModule is designed for use with low-dose CT image enhancement tasks, where adding noise to the
+    input images can help improve the model's ability to reconstruct high-quality images from low-dose data.
+
+    Args:
+        dataset1 (VisionDataset or str): The primary dataset or its string name to be used for data retrieval.
+        dataset1_kwargs (dict): A dictionary of keyword arguments for the primary dataset constructor.
+        dataset2 (VisionDataset or str): The secondary dataset or its string name to be used for adding noise.
+        dataset2_kwargs (dict): A dictionary of keyword arguments for the secondary dataset constructor.
+        proportion (float, optional): The probability of using an augmented data sample. Defaults to 0.5.
+        shuffle (bool, optional): Whether to shuffle the data. Defaults to False.
+        patch_size (int, optional): The size of patches to extract from the images. Defaults to 64.
+        batch_size (int, optional): The batch size for the dataloaders. Defaults to 32.
+        num_workers (int, optional): The number of workers for the dataloaders. Defaults to 31.
+
+    Attributes:
+        dataset1 (VisionDataset): The primary dataset.
+        dataset1_kwargs (dict): A dictionary of keyword arguments for the primary dataset.
+        dataset2 (VisionDataset): The secondary dataset.
+        dataset2_kwargs (dict): A dictionary of keyword arguments for the secondary dataset.
+        proportion (float): The proportion of using an augmented data sample.
+        shuffle (bool): Whether to shuffle the data.
+        patch_size (int): The size of patches to extract from the images.
+        batch_size (int): The batch size for the dataloaders.
+        num_workers (int): The number of workers for the dataloaders.
+        transform (callable): A function/transform that takes in a sample and returns a transformed version.
+        train_set (AugmentedDataSet): The training dataset.
+        val_set (AugmentedDataSet): The validation dataset.
+        test_set (AugmentedDataSet): The test dataset.
+        predict_set (AugmentedDataSet): The prediction dataset.
+    """
+
+    def __init__(self, dataset1, dataset1_kwargs, dataset2, dataset2_kwargs, proportion=0.5, shuffle=True, patch_size=64, batch_size=32, num_workers=31):
+        super().__init__()
+        if isinstance(dataset1, str):
+            dataset1 = eval(dataset1)
+        if isinstance(dataset2, str):
+            dataset2 = eval(dataset2)
+        self.dataset1 = dataset1
+        self.dataset1_kwargs = dataset1_kwargs
+        self.dataset2 = dataset2
+        self.dataset2_kwargs = dataset2_kwargs
+        self.proportion = proportion
+        self.shuffle = shuffle
+        self.patch_size = patch_size
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
+
+        self.dataset1_kwargs['patch_size'] = patch_size
+        self.dataset1_kwargs['transform'] = self.transform
+        self.dataset1_kwargs['target_transform'] = self.transform
+        self.dataset2_kwargs['patch_size'] = patch_size
+        self.dataset2_kwargs['transform'] = self.transform
+        self.dataset2_kwargs['target_transform'] = self.transform
+
+    def prepare_data(self):
+        self.dataset1(**self.dataset1_kwargs)
+        self.dataset2(**self.dataset2_kwargs)
+
+    def setup(self, stage: str):
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit":
+            self.dataset1_kwargs['train'] = True
+            self.dataset2_kwargs['train'] = True
+            train_set = AugmentedDataSet(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
+                                         dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs,
+                                         proportion=self.proportion)
+            # use 80% of training data for actual training and 20% for validation
+            train_set_size = int(len(train_set) * 0.8)
+            valid_set_size = len(train_set) - train_set_size
+
+            # split the train set into two
+            seed = torch.Generator().manual_seed(42)
+            self.train_set, self.val_set = random_split(train_set,
+                                                        [train_set_size,
+                                                         valid_set_size],
+                                                        generator=seed)
+
+        # Assign test dataset for use in dataloader(s)
+        if stage == "test":
+            self.dataset1_kwargs['train'] = False
+            self.dataset2_kwargs['train'] = False
+            self.test_set = AugmentedDataSet(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
+                                             dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs,
+                                             proportion=self.proportion)
+
+        if stage == "predict":
+            self.dataset1_kwargs['train'] = False
+            self.dataset2_kwargs['train'] = False
+            self.predict_set = AugmentedDataSet(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
+                                             dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs,
+                                             proportion=self.proportion)
+
+    def train_dataloader(self):
+        return DataLoader(self.train_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers, shuffle=self.shuffle)
 
     def val_dataloader(self):
         return DataLoader(self.val_set, batch_size=self.batch_size,

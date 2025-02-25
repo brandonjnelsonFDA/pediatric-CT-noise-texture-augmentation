@@ -7,6 +7,7 @@ export LOG_DIR="$1"_"$SLURM_ARRAY_TASK_ID"
 LOG_DIR=$LOG_DIR
 TRAIN_CONFIG=${2:-train_adult.yaml}
 MODEL=${3:-UNet}
+PROPORTION=${4:-0.5} #proportion of batch that is augmented if using AugmentedDataModule
 NUM_WORKERS=$(($(nproc) - 1))
 
 mkdir -p $LOG_DIR
@@ -26,7 +27,7 @@ echo "Starting Training on Pediatric Data..."
 python main.py fit     --config $TRAIN_CONFIG\
                        --model $MODEL\
                        --trainer.logger.save_dir $LOG_DIR\
-                       --data.num_workers $NUM_WORKERS
+                       --data.num_workers $NUM_WORKERS\
 
 # Find the best checkpoint path
 BEST_CHECKPOINT=$(find "$LOG_DIR" -type f -name "*.ckpt" | sort -n | tail -n 1)
