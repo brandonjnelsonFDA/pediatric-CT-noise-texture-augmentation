@@ -28,6 +28,7 @@ python main.py fit     --config $TRAIN_CONFIG\
                        --model $MODEL\
                        --trainer.logger.save_dir $LOG_DIR\
                        --data.num_workers $NUM_WORKERS\
+                       --data.proportion $PROPORTION
 
 # Find the best checkpoint path
 BEST_CHECKPOINT=$(find "$LOG_DIR" -type f -name "*.ckpt" | sort -n | tail -n 1)

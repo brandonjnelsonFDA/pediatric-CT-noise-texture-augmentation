@@ -5,10 +5,11 @@ import pandas as pd
 import pydicom
 import torch
 from torchvision.datasets import VisionDataset
+from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import v2
 
 import lightning as L
-from torch.utils.data import DataLoader, random_split
+from skimage.exposure import match_histograms
 
 
 def read_image(path):
@@ -133,6 +134,7 @@ class HeadSimCTDataModule(L.LightningDataModule):
         patch_size (int, optional): The size of patches to extract from the images. Defaults to 64.
         batch_size (int, optional): The batch size for the dataloaders. Defaults to 32.
         num_workers (int, optional): The number of workers for the dataloaders. Defaults to 1.
+        proportion (None): Not used, see AugmentedDataModule
 
     Attributes:
         data_dir (str): The root directory of the dataset.
@@ -146,7 +148,7 @@ class HeadSimCTDataModule(L.LightningDataModule):
         predict_set (HeadSimCTDataset): The prediction dataset.
     """
 
-    def __init__(self, data_dir: str = "./", patch_size=64, batch_size=32, num_workers=1):
+    def __init__(self, data_dir: str = "./", patch_size=64, batch_size=32, num_workers=1, proportion=None):
         super().__init__()
         self.data_dir = data_dir
         self.patch_size = patch_size
@@ -317,6 +319,7 @@ class MayoLDGCDataModule(L.LightningDataModule):
         patch_size (int, optional): The size of patches to extract from the images. Defaults to 64.
         batch_size (int, optional): The batch size for the dataloaders. Defaults to 32.
         num_workers (int, optional): The number of workers for the dataloaders. Defaults to 31.
+        proportion (None): Not used, see AugmentedDataModule
 
     Attributes:
         data_dir (str): The root directory of the dataset.
@@ -331,7 +334,7 @@ class MayoLDGCDataModule(L.LightningDataModule):
         predict_set (MayoLDGCDataset): The prediction dataset.
     """
 
-    def __init__(self, data_dir: str = "./", region=None, patch_size=64, batch_size=32, num_workers=31):
+    def __init__(self, data_dir: str = "./", region=None, patch_size=64, batch_size=32, num_workers=1, proportion=None):
         super().__init__()
         self.data_dir = data_dir
         self.region = region
@@ -535,7 +538,8 @@ class PediatricIQDataModule(L.LightningDataModule):
         subgroup (str, list, optional): newborn, child, adolescent, adult based on size
         patch_size (int, optional): The size of patches to extract from the images. Defaults to 64.
         batch_size (int, optional): The batch size for the dataloaders. Defaults to 32.
-        num_workers (int, optional): The number of workers for the dataloaders. Defaults to 31.
+        num_workers (int, optional): The number of workers for the dataloaders. Defaults to 1.
+        proportion (None): Not used, see AugmentedDataModule
 
     Attributes:
         data_dir (str): The root directory of the dataset.
@@ -550,7 +554,7 @@ class PediatricIQDataModule(L.LightningDataModule):
         predict_set (MayoLDGCDataset): The prediction dataset.
     """
 
-    def __init__(self, data_dir: str = "./", phantom=None, subgroup=None, shuffle=False, patch_size=64, batch_size=32, num_workers=31):
+    def __init__(self, data_dir: str = "./", phantom=None, subgroup=None, shuffle=False, patch_size=64, batch_size=32, num_workers=1, proportion=None):
         super().__init__()
         self.data_dir = data_dir
         self.phantom = phantom
@@ -609,7 +613,7 @@ class PediatricIQDataModule(L.LightningDataModule):
                           num_workers=self.num_workers)
 
 
-class AugmentedDataSet(VisionDataset):
+class AugmentedDataset(VisionDataset):
     '''
     A PyTorch dataset that uses one dataset (dset1) as the main dataset and uses a second dataset (dset2) for adding noise
     to augment the data.
@@ -630,11 +634,12 @@ class AugmentedDataSet(VisionDataset):
         root (Path): The root directory of the input dataset.
         proportion (float): The probability of adding noise to an input image.
     '''
-    def __init__(self, dset1: VisionDataset, dset1_kwargs: dict, dset2: VisionDataset, dset2_kwargs: dict, proportion: float=0.5):
+    def __init__(self, dset1: VisionDataset, dset1_kwargs: dict, dset2: VisionDataset, dset2_kwargs: dict, proportion: float=0.5, match_histograms=True):
         self.dset1 = dset1(**dset1_kwargs)
         self.dset2 = dset2(**dset2_kwargs)
         self.root = dset1_kwargs['root']
         self.proportion = proportion
+        self.match_histograms = match_histograms
 
     def __len__(self):
         '''
@@ -658,10 +663,13 @@ class AugmentedDataSet(VisionDataset):
         '''
         image, label = self.dset1[i]
         if torch.rand(1)[0] < self.proportion:
+            train_noise = label - image
             idx = torch.randint(0, len(self.dset2), size=(1,))[0].numpy()
-            x2, y2 = self.dset2[idx]
-            noise = y2 - x2
-            image = label + noise
+            ref_image, ref_label = self.dset2[idx]
+            ref_noise = ref_label - ref_image
+            if self.match_histograms:
+                ref_noise = match_histograms(ref_noise.numpy(), reference=train_noise.numpy())
+            image = label + ref_noise
         return image, label
 
 
@@ -696,13 +704,13 @@ class AugmentedDataModule(L.LightningDataModule):
         batch_size (int): The batch size for the dataloaders.
         num_workers (int): The number of workers for the dataloaders.
         transform (callable): A function/transform that takes in a sample and returns a transformed version.
-        train_set (AugmentedDataSet): The training dataset.
-        val_set (AugmentedDataSet): The validation dataset.
-        test_set (AugmentedDataSet): The test dataset.
-        predict_set (AugmentedDataSet): The prediction dataset.
+        train_set (AugmentedDataset): The training dataset.
+        val_set (AugmentedDataset): The validation dataset.
+        test_set (AugmentedDataset): The test dataset.
+        predict_set (AugmentedDataset): The prediction dataset.
     """
 
-    def __init__(self, dataset1, dataset1_kwargs, dataset2, dataset2_kwargs, proportion=0.5, shuffle=True, patch_size=64, batch_size=32, num_workers=31):
+    def __init__(self, dataset1, dataset1_kwargs, dataset2, dataset2_kwargs, proportion=0.5, match_histograms=True, shuffle=True, patch_size=64, batch_size=32, num_workers=31):
         super().__init__()
         if isinstance(dataset1, str):
             dataset1 = eval(dataset1)
@@ -713,6 +721,7 @@ class AugmentedDataModule(L.LightningDataModule):
         self.dataset2 = dataset2
         self.dataset2_kwargs = dataset2_kwargs
         self.proportion = proportion
+        self.match_histograms = match_histograms
         self.shuffle = shuffle
         self.patch_size = patch_size
         self.batch_size = batch_size
@@ -735,9 +744,9 @@ class AugmentedDataModule(L.LightningDataModule):
         if stage == "fit":
             self.dataset1_kwargs['train'] = True
             self.dataset2_kwargs['train'] = True
-            train_set = AugmentedDataSet(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
+            train_set = AugmentedDataset(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
                                          dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs,
-                                         proportion=self.proportion)
+                                         proportion=self.proportion, match_histograms=self.match_histograms)
             # use 80% of training data for actual training and 20% for validation
             train_set_size = int(len(train_set) * 0.8)
             valid_set_size = len(train_set) - train_set_size
@@ -753,16 +762,14 @@ class AugmentedDataModule(L.LightningDataModule):
         if stage == "test":
             self.dataset1_kwargs['train'] = False
             self.dataset2_kwargs['train'] = False
-            self.test_set = AugmentedDataSet(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
-                                             dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs,
-                                             proportion=self.proportion)
+            self.test_set = AugmentedDataset(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
+                                             dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs)
 
         if stage == "predict":
             self.dataset1_kwargs['train'] = False
             self.dataset2_kwargs['train'] = False
-            self.predict_set = AugmentedDataSet(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
-                                             dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs,
-                                             proportion=self.proportion)
+            self.predict_set = AugmentedDataset(dset1=self.dataset1, dset1_kwargs=self.dataset1_kwargs,
+                                             dset2=self.dataset2, dset2_kwargs=self.dataset2_kwargs)
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=self.batch_size,
