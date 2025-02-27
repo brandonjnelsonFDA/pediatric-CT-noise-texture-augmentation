@@ -20,3 +20,6 @@ for num in $(seq 0 0.5 1.0); do
     bash run_training.sh $OUTPUT_DIR train_adult_augmented.yaml UNet $REPEATS $PROPORTION
     bash run_training.sh $OUTPUT_DIR train_adult_augmented.yaml REDCNN $REPEATS $PROPORTION
 done
+
+# make measurements on uniform phantom
+python get_experiment_metadata.py $OUTPUT_DIR | python measure.py 
