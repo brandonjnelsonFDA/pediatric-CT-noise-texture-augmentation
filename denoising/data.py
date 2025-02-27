@@ -13,10 +13,33 @@ from skimage.exposure import match_histograms
 
 
 def read_image(path):
+    """
+    Reads a DICOM image file and returns its pixel array as a numpy array.
+    Also adjusts the pixel intensities based on the RescaleIntercept value in the DICOM file.
+
+    Args:
+        path (str or Path): The file path of the DICOM image.
+
+    Returns:
+        numpy.ndarray: The pixel array of the DICOM image, after applying a linear transformation.
+    """
     dcm = pydicom.dcmread(path)
     return dcm.pixel_array + float(dcm.RescaleIntercept)
 
+
 def get_patch(img, target, patch_size):
+    """
+    Extracts a random patch from an image and its corresponding target.
+    The patch size is defined by the patch_size parameter.
+
+    Args:
+        img (torch.Tensor): The input image.
+        target (torch.Tensor): The corresponding target image or label.
+        patch_size (int): The size of the patch to extract.
+
+    Returns:
+        tuple: A tuple of two tensors, the first containing the extracted patch from the image and the second containing the corresponding patch from the target.
+    """
     patched_img = img.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
     patched_target = target.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
     ix, iy = torch.randint(0, patched_img.shape[0]-1, size=(2, 1))
