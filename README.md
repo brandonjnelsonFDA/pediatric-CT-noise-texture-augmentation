@@ -15,6 +15,15 @@ This repository contains runable code to reproduce the figures in the article "N
 
 Adult-trained CT denoising models were shown to perform poorly in pediatric CT due to Field-of-view (FOV) differences between adult and pediatric CT protocols. This project use noise patches from pediatric protocol phantom scans to augment training with adult datasets. This technique can improve performance in smaller-pediatric patients not represented in the training dataset.
 
+
+**sim-head-dataset**
+low-high dose simulated head CT dataset
+- `bash sim-head-dataset/run_all.sh` to reproduce
+
+**denoising**
+Model training and testing
+- `bash denoising/run_all.sh` to reproduce
+
 ## Index
 
 Figures 1, 2 can be found in [00_characterizing_noise_augmentation.ipynb](notebooks/00_characterizing_noise_augmentation.ipynb)
