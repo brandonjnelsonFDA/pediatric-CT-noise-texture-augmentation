@@ -1,25 +1,22 @@
 # runs all experiments for the paper
 REPEATS=1
 OUTPUT_DIR=lightning_logs/$(date +'%Y-%m-%d_%H-%M')_augmented_hist
+MODELS=("UNet" "REDCNN")
 
-# the typical case where you have access to an adult dataset
-bash run_training.sh $OUTPUT_DIR train_adult.yaml UNet $REPEATS
-bash run_training.sh $OUTPUT_DIR train_adult.yaml REDCNN $REPEATS
+# loops through all models and configurations
+for model in "${MODELS[@]}"; do
+    for config in train_adult.yaml train_pediatric.yaml train_head.yaml; do
+        bash run_training.sh $OUTPUT_DIR $config $model $REPEATS
+    done
+done
 
-#ideal case when there's access to pediatric data
-bash run_training.sh $OUTPUT_DIR train_pediatric.yaml UNet $REPEATS
-bash run_training.sh $OUTPUT_DIR train_pediatric.yaml REDCNN $REPEATS
-
-# does training on a different small anatomy have similar results to dedicated pediatric model?
-bash run_training.sh $OUTPUT_DIR train_head.yaml UNet $REPEATS
-bash run_training.sh $OUTPUT_DIR train_head.yaml REDCNN $REPEATS
-
-# does training on pediatric sized phantoms have similar results to dedicated pediatric model? (both alternatives when pediatric training data not available)
+# loop through models for unavailable pediatric training data
 for num in $(seq 0 0.5 1.0); do
     PROPORTION=$num
-    bash run_training.sh $OUTPUT_DIR train_adult_augmented.yaml UNet $REPEATS $PROPORTION
-    bash run_training.sh $OUTPUT_DIR train_adult_augmented.yaml REDCNN $REPEATS $PROPORTION
+    for model in "${MODELS[@]}"; do
+        bash run_training.sh $OUTPUT_DIR train_adult_augmented.yaml $model $REPEATS $PROPORTION
+    done
 done
 
 # make measurements on uniform phantom
-python get_experiment_metadata.py $OUTPUT_DIR | python measure.py 
+python get_experiment_metadata.py $OUTPUT_DIR | python measure.py
