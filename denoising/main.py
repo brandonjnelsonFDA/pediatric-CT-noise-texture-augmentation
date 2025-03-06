@@ -6,6 +6,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from data import HeadSimCTDataModule, MayoLDGCDataModule, PediatricIQDataModule, AugmentedDataModule
 from networks import REDCNN, UNet
 from callbacks import DicomWriter
+import torch
+
+# torch.set_float32_matmul_precision('medium')
 # https://github.com/Lightning-AI/pytorch-lightning/blob/3dcf7130c554f4511c756ccbb4e3a417103d595d/pytorch_lightning/loggers/tensorboard.py#L110-L119
 def cli_main():
     cli = LightningCLI(trainer_class=Trainer, save_config_kwargs={"overwrite": True})
