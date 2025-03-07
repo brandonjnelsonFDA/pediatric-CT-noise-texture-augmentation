@@ -32,6 +32,10 @@ python main.py fit     --config $TRAIN_CONFIG\
 
 source run_predictions.sh $LOG_DIR
 
+echo "Making Measurements"
+EXPERIMENT_DIR=$(dirname "$LOG_DIR")
+python get_experiment_metadata.py $EXPERIMENT_DIR | python measure.py
+
 set +x
 EXIT_STATUS=$?
 END_TIME=`date +%s`

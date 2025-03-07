@@ -24,7 +24,7 @@ def get_strength(recon_name):
     '''
     splits = recon_name.split('augmented_')
     if len(splits) > 1:
-        strength = int(splits[-1].split('_')[0])
+        strength = float(splits[-1].split('_')[0])
         return strength
     return 0
 
