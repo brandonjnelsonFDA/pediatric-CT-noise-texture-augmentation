@@ -1,4 +1,5 @@
 data
+.noise_augmentation
 models
 Ped-ETK
 LCD_CT*

@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
-from data import PediatricIQDataset
+from data import PediatricIQDataset, MayoLDGCDataset
 from dotenv import load_dotenv
 
 load_dotenv()

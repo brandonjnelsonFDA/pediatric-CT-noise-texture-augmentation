@@ -19,7 +19,7 @@ exec 2>> $LOG_DIR/$LOGNAME
 
 echo "==== begin job $JOB_NAME ($SLURM_ARRAY_TASK_ID) at:" `date` "on host $HOSTNAME"
 
-source /home/$USER/anaconda3/envs/noise_augmentation/bin/activate
+source /home/$USER/Dev/pediatric-CT-noise-texture-augmentation/.noise_augmentation/bin/activate
 
 START_TIME=`date +%s`
 set -x
@@ -30,7 +30,7 @@ python main.py fit     --config $TRAIN_CONFIG\
                        --data.num_workers $NUM_WORKERS\
                        --data.proportion $PROPORTION
 
-source run_predictions.sh $LOG_DIR
+. ./run_prediction.sh $LOG_DIR
 
 echo "Making Measurements"
 EXPERIMENT_DIR=$(dirname "$LOG_DIR")
