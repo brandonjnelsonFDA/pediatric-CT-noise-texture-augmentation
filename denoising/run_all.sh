@@ -1,6 +1,6 @@
 # runs all experiments for the paper
 REPEATS=1
-OUTPUT_DIR=lightning_logs/$(date +'%Y-%m-%d_%H-%M')_augmented_hist
+OUTPUT_DIR=lightning_logs/$(date +'%Y-%m-%d_%H-%M')_ldgc_abdomen
 MODELS=("UNet" "REDCNN")
 
 # outer loop loops through training scenarios:

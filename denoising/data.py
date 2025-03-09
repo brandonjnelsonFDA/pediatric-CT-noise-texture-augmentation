@@ -180,8 +180,6 @@ class HeadSimCTDataModule(L.LightningDataModule):
         self.transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
 
     def prepare_data(self):
-        # download
-        # HeadSimCTDataset(base_dir)
         pass
 
     def setup(self, stage: str):
@@ -367,8 +365,6 @@ class MayoLDGCDataModule(L.LightningDataModule):
         self.transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
 
     def prepare_data(self):
-        # download
-        # MayoLDGCDataset()
         pass
 
     def setup(self, stage: str):
@@ -691,7 +687,10 @@ class AugmentedDataset(VisionDataset):
             ref_image, ref_label = self.dset2[idx]
             ref_noise = ref_label - ref_image
             if self.match_histograms:
-                ref_noise = match_histograms(ref_noise.numpy(), reference=train_noise.numpy())
+                if isinstance(ref_noise, torch.Tensor):
+                    ref_noise = ref_noise.numpy()
+                    train_noise = train_noise.numpy()
+                ref_noise = match_histograms(ref_noise, reference=train_noise)
             image = label + ref_noise
         return image, label
 

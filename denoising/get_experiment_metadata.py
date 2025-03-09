@@ -29,9 +29,9 @@ def get_strength(recon_name):
     return 0
 
 
-def get_experiment_metadata(experiment_dir: str) -> pd.DataFrame:
+def get_pediatric_metadata(experiment_dir: str) -> pd.DataFrame:
     """
-    This function receives a directory path as input and generates metadata about experimental results within the directory.
+    This function receives a directory path as input and generates metadata about *pediatric* experimental results within the directory.
 
     Parameters:
     experiment_dir (str): The path to the directory containing experiment outputs
@@ -59,6 +59,44 @@ def get_experiment_metadata(experiment_dir: str) -> pd.DataFrame:
     return metadata
 
 
+def get_adult_metadata(experiment_dir: str) -> pd.DataFrame:
+    """
+    This function receives a directory path as input and generates metadata about *adult* experimental results within the directory.
+
+    Parameters:
+    experiment_dir (str): The path to the directory containing experiment outputs
+
+    Returns:
+    pd.DataFrame: A DataFrame containing the metadata of experiments
+    """
+    experiment_dir = Path(experiment_dir)
+
+    dfs = []
+    dset = MayoLDGCDataset(os.environ['LDGC_PATH'], train='predict')
+
+    ld_metadata = pd.DataFrame()
+    ld_metadata['file'] = dset.image_paths
+    ld_metadata['recon'] = 'fbp low dose'
+    dfs.append(ld_metadata.copy())
+
+    rd_metadata = pd.DataFrame()
+    rd_metadata['file'] = dset.target_paths
+    rd_metadata['recon'] = 'fbp full dose'
+    dfs.append(rd_metadata.copy())
+
+    for test_set in ['MayoLDGC']:
+        for recon_dir in experiment_dir.rglob(test_set):
+            denoised_fnames = sorted(list(recon_dir.rglob('*.dcm')))        
+            ld_metadata = pd.DataFrame()
+            ld_metadata['file'] = denoised_fnames
+            ld_metadata['recon'] = ld_metadata['file'].apply(lambda o: o.parts[-3])
+            dfs.append(ld_metadata)
+    metadata = pd.concat(dfs, ignore_index=True)
+    metadata['lambda'] = metadata['recon'].apply(get_strength)
+    metadata['repeat'] = metadata['recon'].apply(get_repeat)
+    return metadata
+
+
 if __name__ == '__main__':
     parser = ArgumentParser(
         description='This script generates metadata about experimental results within a specified directory.',
@@ -75,9 +113,19 @@ if __name__ == '__main__':
         help='Name of the output CSV file. Default is "metadata.csv". '
              'If another filename is provided, it should include the .csv extension.'
     )
+    parser.add_argument(
+        '--adult', '-a',
+        type=bool,
+        default=False,
+        help='Whether to return adult results, defaults to false, and returns pediatric results'
+    )
     args = parser.parse_args()
     experiment_dir = Path(args.experiment_dir)
+    get_experiment_metadata = get_adult_metadata if args.adult else get_pediatric_metadata
     metadata = get_experiment_metadata(experiment_dir)
-    fname = experiment_dir / args.output
+    output = args.output
+    if args.adult:
+        output = 'adult_' + output
+    fname = experiment_dir / output
     print(f'{fname}')
     metadata.to_csv(fname, index=False)
