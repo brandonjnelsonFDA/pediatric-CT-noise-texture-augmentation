@@ -2,6 +2,7 @@
 torchvision
 pydicom
 matplotlib
+seaborn
 pydot
 SimpleITK
 scikit-learn

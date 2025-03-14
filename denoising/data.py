@@ -508,9 +508,15 @@ class PediatricIQDataset(VisionDataset):
       if train == 'predict':
         pass
       elif train == True:
-        metadata = metadata[~metadata['name'].isin(testid)]
+        if len(metadata[~metadata['name'].isin(testid)]) > 0:
+            metadata = metadata[~metadata['name'].isin(testid)]
+        else:
+            metadata = metadata.iloc[int(len(metadata)*0.1):]
       elif train == False:
-        metadata = metadata[metadata['name'].isin(testid)]
+        if len(metadata[~metadata['name'].isin(testid)]) > 0:
+            metadata = metadata[metadata['name'].isin(testid)]
+        else:
+            metadata = metadata.iloc[:int(len(metadata)*0.1)]
       fovs = metadata['FOV [cm]'].unique()
       self.root = base_dir
       self.metadata = metadata
