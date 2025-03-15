@@ -66,7 +66,7 @@ data:
     dataset1: MayoLDGCDataset
     dataset1_kwargs:
       root: /projects01/didsr-aiml/common_data/Mayo_CT_LDGC
-      region: abdomen
+      region: chest
     dataset2: PediatricIQDataset
     dataset2_kwargs:
       root: /projects01/didsr-aiml/brandon.nelson/pediatric_CT_noise_augmentation

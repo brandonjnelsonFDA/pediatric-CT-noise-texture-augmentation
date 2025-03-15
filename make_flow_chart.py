@@ -1,16 +1,15 @@
-# %%
+from argparse import ArgumentParser
 import os
 from pathlib import Path
-from denoising.data import AugmentedDataset, AugmentedDataModule, MayoLDGCDataset, MayoLDGCDataModule, PediatricIQDataset
-from dotenv import load_dotenv
 import numpy as np
-load_dotenv()
-
 from PIL import Image
 import pydot
-
 import matplotlib.pyplot as plt
+from dotenv import load_dotenv
+
 from notebooks.make_noise_patches import plot_representative_noise_patches
+from denoising.data import AugmentedDataset, AugmentedDataModule, MayoLDGCDataset, MayoLDGCDataModule, PediatricIQDataset
+load_dotenv()
 
 
 def prep_image_patches(output_dir, patch_size=64, group='adolescent', region='chest'):
@@ -34,8 +33,6 @@ def prep_image_patches(output_dir, patch_size=64, group='adolescent', region='ch
     for x, y in real_dl:
         break
 
-    for x, y in aug_dl:
-        break
     row = 0
     col = 0 
     plt.imshow(y[row, col], cmap='gray', vmin=-250, vmax=350)
@@ -100,7 +97,7 @@ def make_traditional_dot_plot(img_dir, img_font=16):
     graphs.write_png(output)
     print(output)
 
-# %% Figure 1
+
 def make_augmented_dot_plot(img_dir, img_font=15):
     fname = 'fig1b_augmented'
     dot_string = f"""digraph {{
@@ -155,14 +152,16 @@ def make_augmented_dot_plot(img_dir, img_font=15):
     graphs.write_png(output)
     print(output)
 
-def main():
-    img_dir = 'images'
+def main(img_dir = 'figures'):
     output_dir = prep_image_patches(img_dir)
     make_augmented_dot_plot(output_dir, img_font=15)
     make_traditional_dot_plot(output_dir, img_font=16)
 
 if __name__ == '__main__':
-    main()
+    parser = ArgumentParser('make flow chart for figure 1')
+    parser.add_argument('--output', '-o', type=str, default='figures', help='output director')
+    args = parser.parse_args()
+    main(args.output)
 
     # noise_image_dict = dict()
     # subgroups = ['newborn', 'infant', 'child', 'adolescent', 'adult']
