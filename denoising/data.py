@@ -221,10 +221,16 @@ class HeadSimCTDataModule(L.LightningDataModule):
     def predict_dataloader(self):
         return DataLoader(self.predict_set, batch_size=self.batch_size)
 
+# Make new dataset and module for the old mayo ldgc as a positive control that everything still works because thats the same dataset used previously in version 1
+# review the dataset articles too to make sure I understand the differences
+#
+# 1. Low-dose CT for the detection and classification of metastatic liver lesions: Results of the 2016 Low Dose CT Grand Challenge: /projects01/didsr-aiml/brandon.nelson/pediatric_CT_noise_augmentation/MayoLDGC
 
 class MayoLDGCDataset(VisionDataset):
     '''
-    A PyTorch dataset for the Mayo Clinic Low Dose CT dataset.
+    A PyTorch dataset for the images of the Mayo Clinic Low Dose CT image and projection dataset.
+
+    Low-dose CT image and projection dataset: https://onlinelibrary.wiley.com/doi/abs/10.1002/mp.14594
 
     This dataset includes CT scans from three regions: head (neuro), chest, and abdomen.
     By specifying the 'region' parameter, it's possible to only use a subset of the data.
@@ -394,6 +400,176 @@ class MayoLDGCDataModule(L.LightningDataModule):
             self.predict_set = MayoLDGCDataset(self.data_dir, train=False,
                                                region=self.region, transform=self.transform,
                                                target_transform=self.transform)
+
+    def train_dataloader(self):
+        return DataLoader(self.train_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+    def predict_dataloader(self):
+        return DataLoader(self.predict_set, batch_size=self.batch_size,
+                          num_workers=self.num_workers)
+
+
+class MayoLDLiverDataset(VisionDataset):
+    '''
+    A PyTorch dataset for the Mayo Clinic Low Dose Liver CT dataset.
+
+    Low-dose CT for the detection and classification of metastatic liver lesions: Results of the 2016 Low Dose CT Grand Challenge
+    https://aapm.onlinelibrary.wiley.com/doi/pdfdirect/10.1002/mp.12345
+
+    This dataset includes CT scans from three regions: head (neuro), chest, and abdomen.
+    By specifying the 'region' parameter, it's possible to only use a subset of the data.
+    Args:
+        root (str, optional): The root directory of the dataset. Defaults to the current working directory.
+        train (bool, optional): Whether to use the training set. Defaults to True.
+        transform (callable, optional): A function/transform that takes in a sample and returns a transformed version.
+        target_transform (callable, optional): A function/transform that takes in the target and returns a transformed version.
+        download (bool, optional): Whether to download the dataset if it's not already present in the root directory. Defaults to True.
+        patch_size (int, optional): The size of patches to extract from the images. Defaults to None (do not extract patches).
+        testid (list, optional): A list of subject IDs to use for testing. Defaults to ['L004'].
+
+    Attributes:
+        root (Path): The root directory of the dataset.
+        data_dir (Path): The directory containing the image data.
+        image_paths (list): A list of paths to the low dose images.
+        target_paths (list): A list of paths to the full dose images.
+        patch_size (int): The size of patches to extract from the images.
+        transform (callable): A function/transform that takes in a sample and returns a transformed version.
+        target_transform (callable): A function/transform that takes in the target and returns a transformed version.
+    '''
+    def __init__(self,
+                 root=os.getcwd(),
+                 train: bool = True,
+                 transform=None,
+                 target_transform=None,
+                 download=True,
+                 patch_size: int | None = None,
+                 testid='L506'):
+
+        root = Path(root)
+        if download & (not root.exists()):
+            utils.download_and_extract_archive(url='<url not provided>',
+                                               download_root=root)
+        self.root = Path(root) / 'images'
+        self.image_paths = sorted(list(self.root.rglob('*/quarter_3mm/*.IMA')))
+        self.target_paths = sorted(list(self.root.rglob('*/full_3mm/*.IMA')))
+
+        if train:
+            self.image_paths = [o for o in self.image_paths if testid not in str(o)]
+            self.target_paths = [o for o in self.target_paths if testid not in str(o)]
+        else:
+            self.image_paths = [o for o in self.image_paths if testid in str(o)]
+            self.target_paths = [o for o in self.target_paths if testid in str(o)]
+
+        self.patch_size = patch_size
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        '''
+        Returns the number of samples in the dataset.
+
+        Returns:
+            int: The number of samples in the dataset.
+        '''
+        return len(self.target_paths)
+
+    def __getitem__(self, idx):
+        ld_path = self.image_paths[idx]
+        rd_path = self.target_paths[idx]
+
+        image = read_image(ld_path)
+        label = read_image(rd_path)
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+
+        if self.patch_size:
+            image, label = get_patch(image.squeeze(),
+                                     label.squeeze(),
+                                     self.patch_size)
+        return image, label
+
+
+class MayoLDLiverDataModule(L.LightningDataModule):
+    """
+    A PyTorch dataset for the Mayo Clinic Low Dose Liver CT dataset.
+
+    Low-dose CT for the detection and classification of metastatic liver lesions: Results of the 2016 Low Dose CT Grand Challenge
+    https://aapm.onlinelibrary.wiley.com/doi/pdfdirect/10.1002/mp.12345
+
+    This module handles the data preprocessing, splitting into train/validation/test datasets,
+    and provides dataloaders for each split.
+
+    Args:
+        data_dir (str, optional): The root directory of the dataset. Defaults to the current working directory.
+        region (str, optional): The region of interest ('abdomen', 'chest', 'neuro'). Defaults to None (use all regions).
+        patch_size (int, optional): The size of patches to extract from the images. Defaults to 64.
+        batch_size (int, optional): The batch size for the dataloaders. Defaults to 32.
+        num_workers (int, optional): The number of workers for the dataloaders. Defaults to 31.
+        proportion (None): Not used, see AugmentedDataModule
+
+    Attributes:
+        data_dir (str): The root directory of the dataset.
+        region (str): The region of interest.
+        patch_size (int): The size of patches to extract from the images.
+        batch_size (int): The batch size for the dataloaders.
+        num_workers (int): The number of workers for the dataloaders.
+        transform (callable): A function/transform that takes in a sample and returns a transformed version.
+        train_set (MayoLDGCDataset): The training dataset.
+        val_set (MayoLDGCDataset): The validation dataset.
+        test_set (MayoLDGCDataset): The test dataset.
+        predict_set (MayoLDGCDataset): The prediction dataset.
+    """
+
+    def __init__(self, data_dir: str = "./", region=None, patch_size=64, batch_size=32, num_workers=1, proportion=None):
+        super().__init__()
+        self.data_dir = data_dir
+        self.region = region
+        self.patch_size = patch_size
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
+
+    def prepare_data(self):
+        pass
+
+    def setup(self, stage: str):
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit":
+            train_set = MayoLDLiverDataset(self.data_dir, train=True,
+                                           patch_size=self.patch_size, transform=self.transform,
+                                           target_transform=self.transform)
+            # use 20% of training data for validation
+            train_set_size = int(len(train_set) * 0.9)
+            valid_set_size = len(train_set) - train_set_size
+
+            # split the train set into two
+            seed = torch.Generator().manual_seed(42)
+            self.train_set, self.val_set = random_split(train_set,
+                                                        [train_set_size,
+                                                         valid_set_size],
+                                                        generator=seed)
+
+        # Assign test dataset for use in dataloader(s)
+        if stage == "test":
+            self.test_set = MayoLDLiverDataset(self.data_dir, train=False,
+                                               transform=self.transform,
+                                               target_transform=self.transform)
+
+        if stage == "predict":
+            self.predict_set = MayoLDLiverDataset(self.data_dir, train=False,
+                                                 transform=self.transform,
+                                                 target_transform=self.transform)
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=self.batch_size,

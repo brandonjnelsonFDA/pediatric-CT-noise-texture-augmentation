@@ -1,5 +1,5 @@
 # lightning.pytorch==2.5.0.post0
-seed_everything: 0
+seed_everything: 42
 trainer:
   accelerator: auto
   strategy: auto

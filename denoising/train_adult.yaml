@@ -1,5 +1,5 @@
 # lightning.pytorch==2.5.0.post0
-seed_everything: 0
+seed_everything: 42
 trainer:
   accelerator: auto
   strategy: auto
@@ -61,10 +61,9 @@ model:
     out_channels: 1
     learning_rate: 0.001
 data:
-  class_path: data.MayoLDGCDataModule
+  class_path: data.MayoLDLiverDataModule
   init_args:
-    data_dir: /projects01/didsr-aiml/common_data/Mayo_CT_LDGC
-    region: chest
+    data_dir: /projects01/didsr-aiml/brandon.nelson/pediatric_CT_noise_augmentation/MayoLDGC
     patch_size: 64
     batch_size: 32
     num_workers: 11

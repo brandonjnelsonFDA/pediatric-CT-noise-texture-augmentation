@@ -1,5 +1,5 @@
 # lightning.pytorch==2.5.0.post0
-seed_everything: 0
+seed_everything: 42
 trainer:
   accelerator: auto
   strategy: auto
@@ -63,10 +63,9 @@ model:
 data:
   class_path: data.AugmentedDataModule
   init_args:
-    dataset1: MayoLDGCDataset
+    dataset1: MayoLDLiverDataset
     dataset1_kwargs:
-      root: /projects01/didsr-aiml/common_data/Mayo_CT_LDGC
-      region: chest
+      root: /projects01/didsr-aiml/brandon.nelson/pediatric_CT_noise_augmentation/MayoLDGC
     dataset2: PediatricIQDataset
     dataset2_kwargs:
       root: /projects01/didsr-aiml/brandon.nelson/pediatric_CT_noise_augmentation

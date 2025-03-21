@@ -15,6 +15,16 @@ from data import HeadSimCTDataset, MayoLDGCDataset
 load_dotenv()
 
 
+def normalize(image, MIN_HU=-1024.0, MAX_HU=3072.0):
+   image = (image - MIN_HU) / (MAX_HU - MIN_HU)
+   return image
+
+
+def denormalize_(image, MIN_HU=-1024.0, MAX_HU=3072.0):
+    image = image * (MAX_HU - MIN_HU) + MIN_HU
+    return image
+
+
 def float_to_uint8(image, window_width, window_level):
     """
     Converts a floating-point CT image (PyTorch tensor) to an 8-bit tensor using windowing.
@@ -168,8 +178,10 @@ class REDCNN(L.LightningModule):
 
 
 class UNet(L.LightningModule):
-    def __init__(self, in_channels=1, out_channels=1, features=[32, 64, 128, 256, 512], learning_rate=1e-3):
+    def __init__(self, in_channels=1, out_channels=1, features=[32, 64, 128, 256, 512], norm_range_min=-1024, norm_range_max=3072, learning_rate=1e-3):
         super(UNet, self).__init__()
+        self.norm_range_min = norm_range_min
+        self.norm_range_max = norm_range_max
         self.learning_rate = learning_rate
         self.save_hyperparameters() # Save hyperparameters for easy loading
 
@@ -206,6 +218,7 @@ class UNet(L.LightningModule):
     def forward(self, x):
         # Downward path
         skips = []
+        x = self.normalize(x)
         x = self.in_conv(x)
         skips.append(x)  # Skip connection for the first level
 
@@ -226,6 +239,7 @@ class UNet(L.LightningModule):
 
         # Output convolution
         x = self.out_conv(x)
+        x = self.denormalize(x)
         return x
 
     def training_step(self, batch, batch_idx):
@@ -262,6 +276,14 @@ class UNet(L.LightningModule):
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10) # Example
         # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100) # Another example
         return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"} # "monitor" is important!
+
+    def normalize(self, image):
+        image = (image - self.norm_range_min) / (self.norm_range_max - self.norm_range_min)
+        return image
+
+    def denormalize(self, image):
+        image = image * (self.norm_range_max - self.norm_range_min) + self.norm_range_min
+        return image
 
     def predict_step(self, batch, batch_idx):
         x, _ = batch
