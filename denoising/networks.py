@@ -10,7 +10,7 @@ import pydicom
 from torchvision.transforms import v2
 import torchvision
 
-from data import HeadSimCTDataset, MayoLDGCDataset
+# from data import HeadSimCTDataset, MayoLDGCDataset
 
 load_dotenv()
 
@@ -85,14 +85,14 @@ class REDCNN(L.LightningModule):
 
         self.relu = nn.ReLU()
 
-        # load sample image for tensorboard
-        tfms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
-        head_CT_sim_test = HeadSimCTDataset(os.environ['HEAD_CT_PATH'], train=False,
-                                            transform=tfms, target_transform=tfms)
-        mayo_test = MayoLDGCDataset(os.environ['LDGC_PATH'], train=False,
-                                    transform=tfms, target_transform=tfms)
-        self.sample_head = head_CT_sim_test[54]
-        self.sample_mayo = mayo_test[248]
+        # # load sample image for tensorboard
+        # tfms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
+        # head_CT_sim_test = HeadSimCTDataset(os.environ['HEAD_CT_PATH'], train=False,
+        #                                     transform=tfms, target_transform=tfms)
+        # mayo_test = MayoLDGCDataset(os.environ['LDGC_PATH'], train=False,
+        #                             transform=tfms, target_transform=tfms)
+        # self.sample_head = head_CT_sim_test[54]
+        # self.sample_mayo = mayo_test[248]
 
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
@@ -206,19 +206,19 @@ class UNet(L.LightningModule):
 
         self.loss_fn = nn.MSELoss()  # Example: Mean Squared Error.  Consider other losses like SSIM or a combination.
 
-        # load sample image for tensorboard
-        tfms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
-        head_CT_sim_test = HeadSimCTDataset(os.environ['HEAD_CT_PATH'], train=False,
-                                            transform=tfms, target_transform=tfms)
-        mayo_test = MayoLDGCDataset(os.environ['LDGC_PATH'], train=False,
-                                    transform=tfms, target_transform=tfms)
-        self.sample_head = head_CT_sim_test[54]
-        self.sample_mayo = mayo_test[248]
+        # # load sample image for tensorboard
+        # tfms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
+        # head_CT_sim_test = HeadSimCTDataset(os.environ['HEAD_CT_PATH'], train=False,
+        #                                     transform=tfms, target_transform=tfms)
+        # mayo_test = MayoLDGCDataset(os.environ['LDGC_PATH'], train=False,
+        #                             transform=tfms, target_transform=tfms)
+        # self.sample_head = head_CT_sim_test[54]
+        # self.sample_mayo = mayo_test[248]
 
     def forward(self, x):
         # Downward path
         skips = []
-        x = self.normalize(x)
+        # x = self.normalize(x)
         x = self.in_conv(x)
         skips.append(x)  # Skip connection for the first level
 
@@ -239,7 +239,7 @@ class UNet(L.LightningModule):
 
         # Output convolution
         x = self.out_conv(x)
-        x = self.denormalize(x)
+        # x = self.denormalize(x)
         return x
 
     def training_step(self, batch, batch_idx):
