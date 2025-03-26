@@ -1,4 +1,5 @@
-"lightning[pytorch-extra]"
+lightning[pytorch-extra]
+wandb
 torchvision
 pydicom
 matplotlib

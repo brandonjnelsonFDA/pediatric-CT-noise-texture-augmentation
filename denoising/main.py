@@ -1,6 +1,6 @@
 from lightning.pytorch.cli import LightningCLI
 from lightning import Trainer
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from data import HeadSimCTDataModule, MayoLDGCDataModule, PediatricIQDataModule, AugmentedDataModule

@@ -25,46 +25,6 @@ def denormalize_(image, MIN_HU=-1024.0, MAX_HU=3072.0):
     return image
 
 
-def float_to_uint8(image, window_width, window_level):
-    """
-    Converts a floating-point CT image (PyTorch tensor) to an 8-bit tensor using windowing.
-
-    Args:
-        image (torch.Tensor): The floating-point CT image.
-        window_width (float): The window width.
-        window_level (float): The window level.
-
-    Returns:
-        torch.Tensor: The 8-bit image. Returns None if inputs are invalid.
-    """
-
-    if not isinstance(image, torch.Tensor) or (image.dtype != torch.float32 and image.dtype != torch.float64):
-        print("Error: Input image must be a PyTorch tensor of float32 or float64.")
-        return None
-
-    if not isinstance(window_width, (int, float)) or window_width <= 0:
-        print("Error: Window width must be a positive number.")
-        return None
-
-    if not isinstance(window_level, (int, float)):
-        print("Error: Window level must be a number.")
-        return None
-
-    lower_bound = window_level - window_width / 2
-    upper_bound = window_level + window_width / 2
-
-    # Clip the pixel values to the window range
-    clipped_image = torch.clamp(image, lower_bound, upper_bound)
-
-    # Scale the clipped values to the 0-255 range
-    scaled_image = (clipped_image - lower_bound) / (upper_bound - lower_bound) * 255
-
-    # Convert to uint8
-    uint8_image = scaled_image.to(torch.uint8)
-
-    return uint8_image
-
-
 class REDCNN(L.LightningModule):
     def __init__(self, in_channels=1, out_channels=1, features=96, norm_range_min=-1024, norm_range_max=3072, learning_rate=1e-3):
         super(REDCNN, self).__init__()
@@ -85,14 +45,6 @@ class REDCNN(L.LightningModule):
 
         self.relu = nn.ReLU()
 
-        # load sample image for tensorboard
-        tfms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
-        head_CT_sim_test = HeadSimCTDataset(os.environ['HEAD_CT_PATH'], train=False,
-                                            transform=tfms, target_transform=tfms)
-        mayo_test = MayoLDGCDataset(os.environ['LDGC_PATH'], train=False,
-                                    transform=tfms, target_transform=tfms)
-        self.sample_head = head_CT_sim_test[54]
-        self.sample_mayo = mayo_test[248]
 
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
@@ -107,24 +59,12 @@ class REDCNN(L.LightningModule):
 
         return loss
 
-    def test_and_log_image(self, test_pair, title, batch_idx, wwwl=(80,40)):
-        # Ensure the test image is a torch tensor and move it to the device
-        test_image, test_label = test_pair
-        prediction = self(test_image[None].to(self.device)).to('cpu')[0]
-        # Concatenate the test image and the prediction for visualization
-        grid = torch.cat((test_image, prediction, test_label), dim=2)
-        # Convert the grid to uint8 and log it on TensorBoard
-        ww, wl = wwwl
-        self.logger.experiment.add_image(title, float_to_uint8(grid, ww, wl), batch_idx)
-
     def validation_step(self, batch, batch_idx):
         # training_step defines the train loop.
         x, y = batch
         y_hat = self(x)
         val_loss = F.mse_loss(y_hat, y)
         self.log("val_loss", val_loss, prog_bar=True)
-        self.test_and_log_image(self.sample_mayo, 'mayo LDGC', batch_idx, (350, 50))
-        self.test_and_log_image(self.sample_head, 'sim CT head', batch_idx, (80, 40))
 
     def test_step(self, batch, batch_idx):
         # this is the test loop
@@ -206,15 +146,6 @@ class UNet(L.LightningModule):
 
         self.loss_fn = nn.MSELoss()  # Example: Mean Squared Error.  Consider other losses like SSIM or a combination.
 
-        # load sample image for tensorboard
-        tfms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
-        head_CT_sim_test = HeadSimCTDataset(os.environ['HEAD_CT_PATH'], train=False,
-                                            transform=tfms, target_transform=tfms)
-        mayo_test = MayoLDGCDataset(os.environ['LDGC_PATH'], train=False,
-                                    transform=tfms, target_transform=tfms)
-        self.sample_head = head_CT_sim_test[54]
-        self.sample_mayo = mayo_test[248]
-
     def forward(self, x):
         # Downward path
         skips = []
@@ -250,24 +181,11 @@ class UNet(L.LightningModule):
         self.log_dict({'train_loss': loss, 'learning_rate': lr}) # Logging for TensorBoard/other loggers
         return loss
 
-    def test_and_log_image(self, test_pair, title, batch_idx, wwwl=(80,40)):
-        # Ensure the test image is a torch tensor and move it to the device
-        test_image, test_label = test_pair
-        prediction = self(test_image[None].to(self.device)).to('cpu')[0]
-        # Concatenate the test image and the prediction for visualization
-        grid = torch.cat((test_image, prediction, test_label), dim=2)
-        # Convert the grid to uint8 and log it on TensorBoard
-        ww, wl = wwwl
-        self.logger.experiment.add_image(title, float_to_uint8(grid, ww, wl), batch_idx)
-
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.log('val_loss', loss, prog_bar=True)
-
-        self.test_and_log_image(self.sample_mayo, 'mayo LDGC', batch_idx, (350, 50))
-        self.test_and_log_image(self.sample_head, 'sim CT head', batch_idx, (80, 40))
         return loss
 
     def configure_optimizers(self):
