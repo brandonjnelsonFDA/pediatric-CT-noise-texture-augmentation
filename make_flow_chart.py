@@ -1,17 +1,19 @@
 from argparse import ArgumentParser
 import os
 from pathlib import Path
-import numpy as np
-from PIL import Image
 import pydot
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 
-from notebooks.make_noise_patches import plot_representative_noise_patches
-from denoising.data import AugmentedDataset, AugmentedDataModule, MayoLDGCDataset, MayoLDGCDataModule, PediatricIQDataset
+from denoising.data import (AugmentedDataModule,
+                            MayoLDGCDataset,
+                            MayoLDGCDataModule,
+                            PediatricIQDataset)
 load_dotenv()
 
-def prep_image_patches(output_dir, patch_size=64, group='adolescent', region='chest'):
+
+def prep_image_patches(output_dir, patch_size=64, group='adolescent',
+                       region='chest'):
     """
     This function prepares and saves the image patches for the flowchart.
 
@@ -27,13 +29,19 @@ def prep_image_patches(output_dir, patch_size=64, group='adolescent', region='ch
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
     output_dir = output_dir.absolute()
-    aug_dm = AugmentedDataModule(MayoLDGCDataset, dict(root=os.environ['LDGC_PATH'], region=region),
-                                PediatricIQDataset, dict(root=os.environ['PEDIATRICIQ_PATH'],
-                                phantom='uniform', subgroup=group), proportion=0, patch_size=patch_size, num_workers=1)
+    aug_dm = AugmentedDataModule(MayoLDGCDataset,
+                                 dict(root=os.environ['LDGC_PATH'],
+                                      region=region),
+                                 PediatricIQDataset,
+                                 dict(root=os.environ['PEDIATRICIQ_PATH'],
+                                      phantom='uniform', subgroup=group),
+                                 proportion=0, patch_size=patch_size,
+                                 num_workers=1)
     aug_dm.setup('fit')
     aug_dl = aug_dm.train_dataloader()
 
-    real_dm = MayoLDGCDataModule(os.environ['LDGC_PATH'], region=region, patch_size=patch_size, num_workers=1)
+    real_dm = MayoLDGCDataModule(os.environ['LDGC_PATH'], region=region,
+                                 patch_size=patch_size, num_workers=1)
     real_dm.setup('fit')
     real_dl = real_dm.train_dataloader()
 
@@ -55,11 +63,13 @@ def prep_image_patches(output_dir, patch_size=64, group='adolescent', region='ch
     plt.imshow(noise_patch[row, col], cmap='gray', vmin=-250, vmax=350)
     plt.axis('off')
     plt.savefig(output_dir / 'noise_patch.png', dpi=300, bbox_inches='tight')
-    plt.imshow(y[row, col] + noise_patch[row, col], cmap='gray', vmin=-250, vmax=350)
+    plt.imshow(y[row, col] + noise_patch[row, col], cmap='gray',
+               vmin=-250, vmax=350)
     plt.axis('off')
     plt.savefig(output_dir / 'aug_patch.png', dpi=300, bbox_inches='tight')
     plt.close('all')  # close all figures to free memory
     return output_dir
+
 
 def make_flowchart(img_dir, img_font=16, flowchart_type='traditional'):
     """
@@ -157,9 +167,10 @@ def make_flowchart(img_dir, img_font=16, flowchart_type='traditional'):
     graphs.write_png(output)
     print(output)
 
-def main(img_dir = 'figures', flowchart_type='traditional', img_font=16):
+
+def main(img_dir='figures', flowchart_type='traditional', img_font=16):
     """
-    This function is the main function that calls the other functions to create the flowcharts.
+    This is the main function to create the flowcharts.
 
     Parameters:
         img_dir (str): The directory to save the images and flowcharts. Default is 'figures'.
@@ -167,12 +178,19 @@ def main(img_dir = 'figures', flowchart_type='traditional', img_font=16):
         img_font (int): The font size for the labels in the flowchart. Default is 16.
     """
     output_dir = prep_image_patches(img_dir)
-    make_flowchart(output_dir, img_font=img_font, flowchart_type=flowchart_type)
+    make_flowchart(output_dir, img_font=img_font,
+                   flowchart_type=flowchart_type)
+
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='This script generates a flow chart for Figure 1 of the denoising project.')
-    parser.add_argument('--output', '-o', type=str, default='figures', help='The directory to save the images and flowcharts. Default is "figures".')
-    parser.add_argument('--type', '-t', type=str, choices=['traditional', 'augmented'], default='traditional', help='The type of flow chart to generate. Options are "traditional" and "augmented". Default is "traditional".')
-    parser.add_argument('--font-size', '-f', type=int, default=16, help='The font size for the labels in the flowchart. Default is 16.')
+    parser.add_argument('--output', '-o', type=str, default='figures',
+                        help='The directory to save the images and flowcharts. Default is "figures".')
+    parser.add_argument('--type', '-t', type=str,
+                        choices=['traditional', 'augmented'],
+                        default='traditional',
+                        help='The type of flow chart to generate. Options are "traditional" and "augmented". Default is "traditional".')
+    parser.add_argument('--font-size', '-f', type=int, default=16,
+                        help='The font size for the labels in the flowchart. Default is 16.')
     args = parser.parse_args()
     main(args.output, args.type, args.font_size)

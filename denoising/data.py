@@ -7,6 +7,7 @@ import torch
 from torchvision.datasets import VisionDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import v2
+from torchvision.datasets.utils import download_and_extract_archive
 
 import lightning as L
 from skimage.exposure import match_histograms
@@ -40,8 +41,12 @@ def get_patch(img, target, patch_size):
     Returns:
         tuple: A tuple of two tensors, the first containing the extracted patch from the image and the second containing the corresponding patch from the target.
     """
-    patched_img = img.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
-    patched_target = target.unfold(0, patch_size, patch_size//2).unfold(1, patch_size, patch_size//2)
+    patched_img = img.unfold(0, patch_size,
+                             patch_size//2).unfold(1, patch_size,
+                                                   patch_size//2)
+    patched_target = target.unfold(0, patch_size,
+                                   patch_size//2).unfold(1, patch_size,
+                                                         patch_size//2)
     ix, iy = torch.randint(0, patched_img.shape[0]-1, size=(2, 1))
     return patched_img[ix, iy], patched_target[ix, iy]
 
@@ -71,78 +76,82 @@ class HeadSimCTDataset(VisionDataset):
     '''
     def __init__(self,
                  root=os.getcwd(),
-                 train: bool=True,
+                 train: bool = True,
                  transform=None,
                  target_transform=None,
                  download=True,
                  patch_size=None,
                  testid='case_000'):
 
-      base_dir = Path(root)
-      if download & (not base_dir.exists()):
-        utils.download_and_extract_archive(url='<url not specified yet>',
-                                           download_root=root)
-      # build metadata file
-      rd_metadata = pd.concat([pd.read_csv(o) for o in sorted(list((base_dir / 'rd').rglob('metadata_*.csv')))], ignore_index=True)
-      ld_metadata = pd.concat([pd.read_csv(o) for o in sorted(list((base_dir / 'ld').rglob('metadata_*.csv')))], ignore_index=True)
-      metadata = pd.concat([ld_metadata, rd_metadata], ignore_index=True)
+        base_dir = Path(root)
+        if download & (not base_dir.exists()):
+            download_and_extract_archive(url='<url not specified yet>',
+                                         download_root=root)
+        # build metadata file
+        rd_metadata = pd.concat([pd.read_csv(o) for o in sorted(list((base_dir / 'rd').rglob('metadata_*.csv')))], ignore_index=True)
+        ld_metadata = pd.concat([pd.read_csv(o) for o in sorted(list((base_dir / 'ld').rglob('metadata_*.csv')))], ignore_index=True)
+        metadata = pd.concat([ld_metadata, rd_metadata], ignore_index=True)
 
-      # assign slice labels
-      for case in metadata['name'].unique():
-        for mA in metadata['mA'].unique():
-            metadata.loc[(metadata['name']==case) &
-                         (metadata['mA'] == mA), 'slice'] = list(range(len(metadata[(metadata['name']==case) &
-                                                                                    (metadata['mA'] == mA)])))
-
-      if train:
-        metadata = metadata[metadata['name'] != testid]
-      else:
-        metadata = metadata[metadata['name'] == testid]
-      self.root = base_dir
-      self.metadata = metadata
-      self.patch_size = patch_size
-      self.ld_metadata = self.metadata[self.metadata['mA'] == 60]
-      self.rd_metadata = self.metadata[self.metadata['mA'] == 240]
-      self.transform = transform
-      self.target_transform = target_transform
+        # assign slice labels
+        for case in metadata['name'].unique():
+            for mA in metadata['mA'].unique():
+                metadata.loc[(metadata['name'] == case) &
+                             (metadata['mA'] == mA), 'slice'] =\
+                                list(range(len(
+                                    metadata[(metadata['name'] == case) &
+                                             (metadata['mA'] == mA)]
+                                                        )))
+        if train:
+            metadata = metadata[metadata['name'] != testid]
+        else:
+            metadata = metadata[metadata['name'] == testid]
+        self.root = base_dir
+        self.metadata = metadata
+        self.patch_size = patch_size
+        self.ld_metadata = self.metadata[self.metadata['mA'] == 60]
+        self.rd_metadata = self.metadata[self.metadata['mA'] == 240]
+        self.transform = transform
+        self.target_transform = target_transform
 
     def __len__(self):
-      '''
-      Returns the number of samples in the dataset.
+        '''
+        Returns the number of samples in the dataset.
 
-      Returns:
-          int: The number of samples in the dataset.
-      '''
-      return len(self.ld_metadata)
+        Returns:
+            int: The number of samples in the dataset.
+        '''
+        return len(self.ld_metadata)
 
     def __getitem__(self, idx):
-      '''
-      Returns the sample and target at the given index.
+        '''
+        Returns the sample and target at the given index.
 
-      Args:
-          idx (int): The index of the sample.
+        Args:
+            idx (int): The index of the sample.
 
-      Returns:
-          tuple: A tuple containing the sample and target.
-      '''
-      ld_patient = self.ld_metadata.iloc[idx]
-      ld_img_path = self.root / ld_patient['image file']
-      image = read_image(ld_img_path)
+        Returns:
+            tuple: A tuple containing the sample and target.
+        '''
+        ld_patient = self.ld_metadata.iloc[idx]
+        ld_img_path = self.root / ld_patient['image file']
+        image = read_image(ld_img_path)
 
-      rd_patient = self.rd_metadata[(self.rd_metadata['name'] == ld_patient['name']) &
-                                    (self.rd_metadata['slice'] == ld_patient['slice'])]
-      rd_img_path = self.root / rd_patient['image file'].item()
-      label = read_image(rd_img_path)
-      if self.transform:
-        image = self.transform(image)
-      if self.target_transform:
-        label = self.target_transform(label)
+        rd_patient = self.rd_metadata[
+            (self.rd_metadata['name'] == ld_patient['name']) &
+            (self.rd_metadata['slice'] == ld_patient['slice'])
+            ]
+        rd_img_path = self.root / rd_patient['image file'].item()
+        label = read_image(rd_img_path)
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
 
-      if self.patch_size:
-        image, label = get_patch(image.squeeze(),
-                                 label.squeeze(),
-                                 self.patch_size)
-      return image, label
+        if self.patch_size:
+            image, label = get_patch(image.squeeze(),
+                                     label.squeeze(),
+                                     self.patch_size)
+        return image, label
 
 
 class HeadSimCTDataModule(L.LightningDataModule):
@@ -171,13 +180,15 @@ class HeadSimCTDataModule(L.LightningDataModule):
         predict_set (HeadSimCTDataset): The prediction dataset.
     """
 
-    def __init__(self, data_dir: str = "./", patch_size=64, batch_size=32, num_workers=1, proportion=None):
+    def __init__(self, data_dir: str = "./", patch_size=64, batch_size=32,
+                 num_workers=1, proportion=None):
         super().__init__()
         self.data_dir = data_dir
         self.patch_size = patch_size
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=False)])
+        self.transform = v2.Compose([v2.ToImage(),
+                                     v2.ToDtype(torch.float32, scale=False)])
 
     def prepare_data(self):
         pass
@@ -186,7 +197,7 @@ class HeadSimCTDataModule(L.LightningDataModule):
         # Assign train/val datasets for use in dataloaders
         if stage == "fit":
             train_set = HeadSimCTDataset(self.data_dir, train=True, patch_size=self.patch_size,
-                                       transform=self.transform, target_transform=self.transform)
+                                         transform=self.transform, target_transform=self.transform)
             # use 20% of training data for validation
             train_set_size = int(len(train_set) * 0.8)
             valid_set_size = len(train_set) - train_set_size
@@ -201,11 +212,14 @@ class HeadSimCTDataModule(L.LightningDataModule):
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
             self.test_set = HeadSimCTDataset(self.data_dir, train=False,
-                                transform=self.transform, target_transform=self.transform)
+                                             transform=self.transform,
+                                             target_transform=self.transform)
 
         if stage == "predict":
-            self.predict_set = HeadSimCTDataset(self.data_dir, train=False,
-                                transform=self.transform, target_transform=self.transform)
+            self.predict_set = HeadSimCTDataset(self.data_dir,
+                                                train=False,
+                                                transform=self.transform,
+                                                target_transform=self.transform)
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=self.batch_size,
@@ -221,10 +235,6 @@ class HeadSimCTDataModule(L.LightningDataModule):
     def predict_dataloader(self):
         return DataLoader(self.predict_set, batch_size=self.batch_size)
 
-# Make new dataset and module for the old mayo ldgc as a positive control that everything still works because thats the same dataset used previously in version 1
-# review the dataset articles too to make sure I understand the differences
-#
-# 1. Low-dose CT for the detection and classification of metastatic liver lesions: Results of the 2016 Low Dose CT Grand Challenge: /projects01/didsr-aiml/brandon.nelson/pediatric_CT_noise_augmentation/MayoLDGC
 
 class MayoLDGCDataset(VisionDataset):
     '''
@@ -268,8 +278,8 @@ class MayoLDGCDataset(VisionDataset):
 
         root = Path(root)
         if download & (not root.exists()):
-            utils.download_and_extract_archive(url='<url not provided>',
-                                               download_root=root)
+            download_and_extract_archive(url='<url not provided>',
+                                         download_root=root)
         data_dir = root / 'LDCT-and-Projection-data'
         metadata = pd.read_csv(root / 'metadata.csv')
 
@@ -456,8 +466,8 @@ class MayoLDLiverDataset(VisionDataset):
 
         root = Path(root)
         if download & (not root.exists()):
-            utils.download_and_extract_archive(url='<url not provided>',
-                                               download_root=root)
+            download_and_extract_archive(url='<url not provided>',
+                                         download_root=root)
         self.root = Path(root) / 'images'
         self.image_paths = sorted(list(self.root.rglob('*/quarter_3mm/*.IMA')))
         self.target_paths = sorted(list(self.root.rglob('*/full_3mm/*.IMA')))
@@ -648,82 +658,82 @@ class PediatricIQDataset(VisionDataset):
                  download=True,
                  patch_size=None):
 
-      base_dir = Path(root)
-      if download & (not base_dir.exists()):
-        utils.download_and_extract_archive(url='https://zenodo.org/records/11267694/files/pediatricIQphantoms.zip',
-                                           download_root=root / 'pediatricIQphantoms')
-        utils.download_and_extract_archive(url='https://zenodo.org/records/12538350/files/anthropomorphic.zip',
-                                           download_root=root / 'anthropomorphic')
-      # build metadata file
-      dfs = []
-      for series in ['pediatricIQphantoms', 'anthropomorphic']:
-        temp_dir = base_dir / series
-        temp = pd.read_csv(temp_dir / 'metadata.csv').rename(columns={'Name': 'name'})
-        temp['file'] = temp['file'].apply(lambda o: temp_dir / o)
-        dfs.append(temp)
-      metadata = pd.concat(dfs, ignore_index=True)
+        base_dir = Path(root)
+        if download & (not base_dir.exists()):
+            download_and_extract_archive(url='https://zenodo.org/records/11267694/files/pediatricIQphantoms.zip',
+                                         download_root=root / 'pediatricIQphantoms')
+            download_and_extract_archive(url='https://zenodo.org/records/12538350/files/anthropomorphic.zip',
+                                         download_root=root / 'anthropomorphic')
+        # build metadata file dfs = []
+        dfs = []
+        for series in ['pediatricIQphantoms', 'anthropomorphic']:
+            temp_dir = base_dir / series
+            temp = pd.read_csv(temp_dir / 'metadata.csv').rename(columns={'Name': 'name'})
+            temp['file'] = temp['file'].apply(lambda o: temp_dir / o)
+            dfs.append(temp)
+        metadata = pd.concat(dfs, ignore_index=True)
 
-      if phantom:
-        metadata = metadata[metadata.phantom == phantom]
+        if phantom:
+            metadata = metadata[metadata.phantom == phantom]
 
-      metadata['pediatric subgroup'] = metadata['effective diameter [cm]'].apply(pediatric_subgroup)
+        metadata['pediatric subgroup'] = metadata['effective diameter [cm]'].apply(pediatric_subgroup)
 
-      if subgroup:
-        if isinstance(subgroup, str):
-            subgroup = [subgroup]
-        metadata = metadata[metadata['pediatric subgroup'].isin(subgroup)]
-      # assign slice labels
-      for name in metadata.name.unique():
+        if subgroup:
+            if isinstance(subgroup, str):
+                subgroup = [subgroup]
+            metadata = metadata[metadata['pediatric subgroup'].isin(subgroup)]
+        # assign slice labels
+        for name in metadata.name.unique():
             for dose in metadata[metadata.name == name]['Dose [%]'].unique():
                 count = len(metadata[(metadata.name == name) &
                             (metadata['Dose [%]'] == dose)])
                 metadata.loc[(metadata.name == name) &
                              (metadata['Dose [%]'] == dose), 'slice'] = list(range(count))
 
-      testid = metadata['name'].iloc[:2]
-      if train == 'predict':
-        pass
-      elif train == True:
-        if len(metadata[~metadata['name'].isin(testid)]) > 0:
-            metadata = metadata[~metadata['name'].isin(testid)]
-        else:
-            metadata = metadata.iloc[int(len(metadata)*0.1):]
-      elif train == False:
-        if len(metadata[~metadata['name'].isin(testid)]) > 0:
-            metadata = metadata[metadata['name'].isin(testid)]
-        else:
-            metadata = metadata.iloc[:int(len(metadata)*0.1)]
-      fovs = metadata['FOV [cm]'].unique()
-      self.root = base_dir
-      self.metadata = metadata
-      self.patch_size = patch_size
-      self.ld_metadata = self.metadata[self.metadata['Dose [%]'] == 25]
-      self.rd_metadata = self.metadata[self.metadata['Dose [%]'] == 100]
-      self.transform = transform
-      self.target_transform = target_transform
+        testid = metadata['name'].iloc[:2]
+        if train == 'predict':
+            pass
+        elif train is True:
+            if len(metadata[~metadata['name'].isin(testid)]) > 0:
+                metadata = metadata[~metadata['name'].isin(testid)]
+            else:
+                metadata = metadata.iloc[int(len(metadata)*0.1):]
+        elif train is False:
+            if len(metadata[~metadata['name'].isin(testid)]) > 0:
+                metadata = metadata[metadata['name'].isin(testid)]
+            else:
+                metadata = metadata.iloc[:int(len(metadata)*0.1)]
+
+        self.root = base_dir
+        self.metadata = metadata
+        self.patch_size = patch_size
+        self.ld_metadata = self.metadata[self.metadata['Dose [%]'] == 25]
+        self.rd_metadata = self.metadata[self.metadata['Dose [%]'] == 100]
+        self.transform = transform
+        self.target_transform = target_transform
 
     def __len__(self):
-      return len(self.ld_metadata)
+        return len(self.ld_metadata)
 
     def __getitem__(self, idx):
-      ld_patient = self.ld_metadata.iloc[idx]
-      ld_img_path = self.root / ld_patient['file']
-      image = read_image(ld_img_path)
+        ld_patient = self.ld_metadata.iloc[idx]
+        ld_img_path = self.root / ld_patient['file']
+        image = read_image(ld_img_path)
 
-      rd_patient = self.rd_metadata[(self.rd_metadata['name'] == ld_patient['name']) &
+        rd_patient = self.rd_metadata[(self.rd_metadata['name'] == ld_patient['name']) &
                                     (self.rd_metadata['slice'] == ld_patient['slice'])]
-      rd_img_path = self.root / rd_patient['file'].item()
-      label = read_image(rd_img_path)
-      if self.transform:
-        image = self.transform(image)
-      if self.target_transform:
-        label = self.target_transform(label)
+        rd_img_path = self.root / rd_patient['file'].item()
+        label = read_image(rd_img_path)
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
 
-      if self.patch_size:
-        image, label = get_patch(image.squeeze(),
-                                 label.squeeze(),
-                                 self.patch_size)
-      return image, label
+        if self.patch_size:
+            image, label = get_patch(image.squeeze(),
+                                     label.squeeze(),
+                                     self.patch_size)
+        return image, label
 
 
 class PediatricIQDataModule(L.LightningDataModule):

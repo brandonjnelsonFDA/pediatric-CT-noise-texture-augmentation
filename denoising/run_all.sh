@@ -1,6 +1,6 @@
 # runs all experiments for the paper
 REPEATS=1
-OUTPUT_DIR=lightning_logs/$(date +'%Y-%m-%d_%H-%M')_ldliver_norm
+OUTPUT_DIR=lightning_logs/$(date +'%Y-%m-%d_%H-%M')_ldgc_wandb
 MODELS=("UNet" "REDCNN")
 
 # outer loop loops through training scenarios:
