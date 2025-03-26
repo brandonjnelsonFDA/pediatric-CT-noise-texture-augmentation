@@ -28,6 +28,7 @@ python main.py fit     --config $TRAIN_CONFIG\
                        --model $MODEL\
                        --trainer.logger.save_dir $LOG_DIR\
                        --trainer.logger.name "${TRAIN_CONFIG%.yaml}"_"$PROPORTION"_"$MODEL"\
+                       --trainer.logger.project "`date +%Y-%m-%d_%H` pediatric CT noise texture augmentation"\
                        --data.num_workers $NUM_WORKERS\
                        --data.proportion $PROPORTION
 
