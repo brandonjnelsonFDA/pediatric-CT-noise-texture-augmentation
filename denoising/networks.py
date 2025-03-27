@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-import torch.nn.functional as F
 import lightning as L
 import torch
 import torch.nn as nn
@@ -39,45 +38,10 @@ class REDCNN(L.LightningModule):
         self.tconv5 = nn.ConvTranspose2d(features, out_channels, kernel_size=5,
                                          stride=1, padding=0)
         self.relu = nn.ReLU()
-
-    def training_step(self, batch, batch_idx):
-        # training_step defines the train loop.
-        x, y = batch
-        x_hat = self(x)
-        loss = F.mse_loss(x_hat, y)
-        self.log('train_loss', loss)
-
-        # Log the learning rate
-        lr = self.lr_schedulers().get_last_lr()[0]
-        self.log_dict({'train_loss': loss, 'learning_rate': lr})
-
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        # training_step defines the train loop.
-        x, y = batch
-        y_hat = self(x)
-        val_loss = F.mse_loss(y_hat, y)
-        self.log("val_loss", val_loss, prog_bar=True)
-
-    def test_step(self, batch, batch_idx):
-        # this is the test loop
-        x, y = batch
-        x_hat = self.torch_module(x)
-        test_loss = F.mse_loss(x_hat, y)
-        self.log("test_loss", test_loss)
-
-    def standardize(self, x):
-        'center data to mean 0, std 1 based on training data'
-        return ((x - self.mean) / self.std)
-
-    def destandardize(self, x):
-        'undo standardization based on mean, std of training data'
-        return (x * self.std + self.mean)
+        self.loss_fn = nn.MSELoss()  # Example: Mean Squared Error.
 
     def forward(self, x):
         x = self.standardize(x)
-
         # encoder
         residual_1 = x
         out = self.relu(self.conv1(x))
@@ -101,12 +65,31 @@ class REDCNN(L.LightningModule):
         out = self.destandardize(out)
         return out
 
-    def predict_step(self, batch, batch_idx):
-        x, _ = batch
-        return self(x)
+    def standardize(self, x):
+        'center data to mean 0, std 1 based on training data'
+        return ((x - self.mean) / self.std)
+
+    def destandardize(self, x):
+        'undo standardization based on mean, std of training data'
+        return (x * self.std + self.mean)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch  # Assuming your batch contains (input, target)
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        lr = self.lr_schedulers().get_last_lr()[0]
+        self.log_dict({'train_loss': loss, 'learning_rate': lr})
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log('val_loss', loss, prog_bar=True)
+        return loss
 
     def configure_optimizers(self):
-        print("Running REDCNN")
+        print("Running UNet")
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                                mode='min',
@@ -116,6 +99,10 @@ class REDCNN(L.LightningModule):
         #                                                        T_max=100)
         return {"optimizer": optimizer, "lr_scheduler": scheduler,
                 "monitor": "val_loss"}
+
+    def predict_step(self, batch, batch_idx):
+        x, _ = batch
+        return self(x)
 
 
 class UNet(L.LightningModule):
@@ -149,14 +136,6 @@ class UNet(L.LightningModule):
 
         self.loss_fn = nn.MSELoss()  # Example: Mean Squared Error.
 
-    def standardize(self, x):
-        'center data to mean 0, std 1 based on training data'
-        return ((x - self.mean) / self.std)
-
-    def destandardize(self, x):
-        'undo standardization based on mean, std of training data'
-        return (x * self.std + self.mean)
-
     def forward(self, x):
         x = self.standardize(x)
         # Downward path
@@ -184,6 +163,14 @@ class UNet(L.LightningModule):
         # task layer
         x = self.destandardize(x)
         return x
+
+    def standardize(self, x):
+        'center data to mean 0, std 1 based on training data'
+        return ((x - self.mean) / self.std)
+
+    def destandardize(self, x):
+        'undo standardization based on mean, std of training data'
+        return (x * self.std + self.mean)
 
     def training_step(self, batch, batch_idx):
         x, y = batch  # Assuming your batch contains (input, target)
