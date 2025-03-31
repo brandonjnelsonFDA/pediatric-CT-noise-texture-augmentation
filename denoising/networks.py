@@ -41,6 +41,7 @@ class REDCNN(L.LightningModule):
         self.loss_fn = nn.MSELoss()  # Example: Mean Squared Error.
 
     def forward(self, x):
+        input_standardized = x
         x = self.standardize(x)
         # encoder
         residual_1 = x
@@ -63,6 +64,8 @@ class REDCNN(L.LightningModule):
         out = self.relu(out)
         # task
         out = self.destandardize(out)
+        out = input_standardized - out  
+        # Denoising task: subtract the noise from the input. Seems only important for REDCNN
         return out
 
     def standardize(self, x):

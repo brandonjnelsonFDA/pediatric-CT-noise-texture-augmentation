@@ -49,7 +49,7 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  class_path: networks.UNet
+  class_path: networks.REDCNN
   init_args:
     in_channels: 1
     out_channels: 1
