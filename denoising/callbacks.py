@@ -37,7 +37,6 @@ def convert_to_dicom(img_slice: torch.tensor, phantom_path: str,
 
 
 class DicomWriter(BasePredictionWriter):
-
     def __init__(self, output_dir, write_interval):
         super().__init__(write_interval)
         self.output_dir = Path(output_dir)
@@ -53,18 +52,23 @@ class DicomWriter(BasePredictionWriter):
 class ImagePredictionLogger(Callback):
     def __init__(self, num_samples=5):
         super().__init__()
-
         dms = {'Mayo LDGC': MayoLDGCDataModule(os.environ['LDGC_PATH'],
                                                region='chest',
                                                patch_size=None,
                                                batch_size=num_samples),
-               'Mayo Liver':  MayoLDLiverDataModule(os.environ['LDLIVER_PATH'],
+               'PedIQ newborn': PediatricIQDataModule(os.environ['PEDIATRICIQ_PATH'],
+                                                      phantom='anthropomorphic',
+                                                      subgroup='newborn',
+                                                      patch_size=None,
+                                                      batch_size=num_samples),
+               'PedIQ adult': PediatricIQDataModule(os.environ['PEDIATRICIQ_PATH'],
+                                                    phantom='anthropomorphic',
+                                                    subgroup='adult',
                                                     patch_size=None,
-                                                    batch_size=num_samples),
-               'PedIQ': PediatricIQDataModule(os.environ['PEDIATRICIQ_PATH'],
-                                              phantom='anthropomorphic',
-                                              patch_size=None,
-                                              batch_size=num_samples)}
+                                                    batch_size=num_samples)}
+                # 'Mayo Liver': MayoLDLiverDataModule(os.environ['LDLIVER_PATH'],
+                #                     patch_size=None,
+                #                     batch_size=num_samples),
         self.val_imgs, self.val_labels = dict(), dict()
         for name, dm in dms.items():
             dm.setup('fit')
@@ -72,17 +76,16 @@ class ImagePredictionLogger(Callback):
                 next(iter(dm.val_dataloader()))
 
     def on_validation_epoch_end(self, trainer, pl_module):
-
         for name in self.val_imgs:
             val_imgs = self.val_imgs[name].to(device=pl_module.device)
-
             preds = pl_module(val_imgs).to('cpu')
-
+            val_loss = pl_module.loss_fn(preds, self.val_labels[name])
             trainer.logger.experiment.log({
                 name: [wandb.Image(torch.cat((x, y, pred), dim=2),
                                    caption="Image, Label, Pred")
                        for x, pred, y in zip(self.val_imgs[name],
                                              preds,
                                              self.val_labels[name])],
+                f"{name} val loss": val_loss,
                 "global_step": trainer.global_step
                 })

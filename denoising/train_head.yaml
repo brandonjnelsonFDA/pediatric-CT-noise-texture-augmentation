@@ -15,7 +15,7 @@ trainer:
   callbacks:
     class_path: callbacks.ImagePredictionLogger
     init_args:
-      num_samples: 3
+      num_samples: 2
   fast_dev_run: false
   max_epochs: 500
   min_epochs: null
