@@ -3,13 +3,14 @@
 #
 # uncommented parameters here will override defaults
 [general]
-output_directory="/projects01/didsr-aiml/brandon.nelson/pedsilicoICH/head_experiment/ld"
+output_directory="/projects01/didsr-aiml/brandon.nelson/pediatric_CT_noise_augmentation/synthetic_data/heads/ld"
 desired_cases=100  # desired dataset size
 keep_raw=false  # keep projection data
 seed=42  # seed to reproduce dataset, set to false or integer
 
 [patient]
 age=[0, 100]  # range in yrs [min, max]
+patientid='low_dose'
 
 [lesion]
 subtypes=[false]

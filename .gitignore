@@ -24,3 +24,5 @@ train_*.o*
 .vscode
 *.dcm
 events.out.tfevents*
+*.o7*
+*.e7*

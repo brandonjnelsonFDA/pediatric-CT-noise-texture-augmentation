@@ -18,6 +18,9 @@ Adult-trained CT denoising models were shown to perform poorly in pediatric CT d
 
 **sim-head-dataset**
 low-high dose simulated head CT dataset
+
+To generate dataset see: https://github.com/DIDSR/PedSilicoAbdomen
+
 - `bash sim-head-dataset/run_all.sh` to reproduce
 
 **denoising**
